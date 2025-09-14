@@ -1,0 +1,4 @@
+pandas
+smartsheet-python-sdk
+openpyxl
+py2app
