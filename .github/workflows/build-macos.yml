@@ -1,0 +1,41 @@
+name: Build macOS App
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Build app
+      run: |
+        python setup.py py2app
+    
+    - name: Create DMG
+      run: |
+        mkdir -p dmg
+        cp -r "dist/Cin7 to Smartsheet Uploader.app" dmg/
+        hdiutil create -volname "Cin7 Uploader" -srcfolder dmg -ov -format UDZO "Cin7-Smartsheet-Uploader.dmg"
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: Cin7-Smartsheet-Uploader
+        path: |
+          Cin7-Smartsheet-Uploader.dmg
+          dist/
