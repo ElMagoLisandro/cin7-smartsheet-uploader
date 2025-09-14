@@ -10,10 +10,10 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: '3.9'
     
@@ -33,7 +33,7 @@ jobs:
         hdiutil create -volname "Cin7 Uploader" -srcfolder dmg -ov -format UDZO "Cin7-Smartsheet-Uploader.dmg"
     
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Cin7-Smartsheet-Uploader
         path: |
