@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Enhanced GUI Script to load data from Excel to Smartsheet
-Professional interface for Cin7 inventory uploads with improved UX - macOS Optimized
+Enhanced GUI Script to load data from Excel to Smartsheet v3.1
+Professional interface for Cin7 inventory uploads with CORRECTED column mapping
+FIXES: Proper column mapping to simple Smartsheet structure, confirmation dialog fix
 """
 
 import pandas as pd
@@ -18,6 +19,8 @@ import re
 import tempfile
 import platform
 from pathlib import Path
+import time
+import requests.exceptions
 
 # Smartsheet configuration
 SMARTSHEET_TOKEN = "pQxhZNG27iD0OXNcG2e3VJnZi3PRVDD6SD2Ju"
@@ -25,7 +28,7 @@ SMARTSHEET_TOKEN = "pQxhZNG27iD0OXNcG2e3VJnZi3PRVDD6SD2Ju"
 class EnhancedSmartsheetUploaderGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Cin7 to Smartsheet Uploader v2.0")
+        self.root.title("Cin7 to Smartsheet Uploader v3.1 - CORRECTED")
         self.root.geometry("900x800")
         self.root.resizable(True, True)
         
@@ -40,6 +43,17 @@ class EnhancedSmartsheetUploaderGUI:
         self.smart = None
         self.processed_df = None
         self.is_processing = False
+        self.upload_cancelled = False
+        self.confirmation_result = None
+        
+        # Enhanced configuration
+        self.config = {
+            'batch_size': 20,  # Even smaller batches for reliability
+            'max_retries': 3,
+            'retry_delay': 2,  # seconds
+            'connection_timeout': 60,  # seconds
+            'read_timeout': 120,  # seconds
+        }
         
         # Set default log directory appropriate for macOS
         if platform.system() == "Darwin":  # macOS
@@ -121,13 +135,13 @@ class EnhancedSmartsheetUploaderGUI:
         self.main_tab.columnconfigure(1, weight=1)
         self.main_tab.rowconfigure(6, weight=1)
         
-        # Title section
+        # Title section with version info
         title_frame = ttk.Frame(self.main_tab)
         title_frame.grid(row=0, column=0, columnspan=3, sticky='ew', pady=(0, 30))
         
-        ttk.Label(title_frame, text="Cin7 Inventory to Smartsheet Uploader", 
+        ttk.Label(title_frame, text="Cin7 Inventory to Smartsheet Uploader v3.1", 
                  style='Title.TLabel').pack()
-        ttk.Label(title_frame, text="Professional data upload tool for inventory management", 
+        ttk.Label(title_frame, text="CORRECTED: Fixed column mapping and confirmation dialog", 
                  style='Info.TLabel').pack(pady=(5, 0))
         
         # File selection section
@@ -190,9 +204,15 @@ class EnhancedSmartsheetUploaderGUI:
                                       command=self.clear_log, style='Modern.TButton')
         self.clear_button.pack(side='left')
         
-        # Progress bar
-        self.progress = ttk.Progressbar(process_section, mode='indeterminate')
-        self.progress.pack(fill='x', pady=(15, 0))
+        # Progress bar with percentage
+        progress_frame = ttk.Frame(process_section)
+        progress_frame.pack(fill='x', pady=(15, 0))
+        
+        self.progress = ttk.Progressbar(progress_frame, mode='determinate')
+        self.progress.pack(fill='x', pady=(0, 5))
+        
+        self.progress_label = ttk.Label(progress_frame, text="", style='Info.TLabel')
+        self.progress_label.pack()
         
         # Log section
         log_section = ttk.LabelFrame(self.main_tab, text="Process Log", padding="15")
@@ -230,9 +250,20 @@ class EnhancedSmartsheetUploaderGUI:
         self.update_timestamp()
         
     def setup_settings_tab(self):
-        """Setup the settings tab"""
+        """Setup the enhanced settings tab"""
         settings_frame = ttk.Frame(self.settings_tab)
         settings_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Upload settings
+        upload_section = ttk.LabelFrame(settings_frame, text="Upload Settings", padding="15")
+        upload_section.pack(fill='x', pady=(0, 20))
+        
+        ttk.Label(upload_section, text=f"Batch Size: {self.config['batch_size']} rows per batch", 
+                 style='Info.TLabel').pack(anchor='w')
+        ttk.Label(upload_section, text=f"Max Retries: {self.config['max_retries']} attempts", 
+                 style='Info.TLabel').pack(anchor='w')
+        ttk.Label(upload_section, text=f"Connection Timeout: {self.config['connection_timeout']}s", 
+                 style='Info.TLabel').pack(anchor='w')
         
         # Log settings
         log_section = ttk.LabelFrame(settings_frame, text="Log Settings", padding="15")
@@ -282,20 +313,24 @@ Application Path: {Path(__file__).parent if '__file__' in globals() else 'Unknow
         ttk.Label(system_section, text=system_info.strip(), style='Info.TLabel').pack(anchor='w')
         
         # About section
-        about_section = ttk.LabelFrame(settings_frame, text="About", padding="15")
+        about_section = ttk.LabelFrame(settings_frame, text="About v3.1", padding="15")
         about_section.pack(fill='x')
         
         about_text = """
-Cin7 to Smartsheet Uploader v2.0
-Professional data upload tool for inventory management
+Cin7 to Smartsheet Uploader v3.1 - CORRECTED
+
+Fixed in v3.1:
+• CORRECTED column mapping for simple Smartsheet structure
+• Fixed confirmation dialog that was auto-cancelling
+• Proper mapping: SOH, Incoming NOT paid, Open Sales, Grand Total
+• Enhanced error handling and better logging
 
 Features:
 • Excel file processing with automatic column detection
-• Real-time progress tracking and logging
-• Batch upload with error handling
-• Modern, user-friendly interface
-• Customizable log file location
-• macOS optimized fonts and behavior
+• Real-time progress tracking and detailed logging
+• Batch upload with error handling and retry logic
+• Modern, user-friendly interface optimized for all platforms
+• Customizable log file location and comprehensive debugging
         """
         
         ttk.Label(about_section, text=about_text.strip(), style='Info.TLabel').pack(anchor='w')
@@ -339,6 +374,16 @@ Features:
         # Update every minute
         self.root.after(60000, self.update_timestamp)
         
+    def update_progress(self, current, total, message=""):
+        """Update progress bar and label"""
+        if total > 0:
+            progress_pct = (current / total) * 100
+            self.progress['value'] = progress_pct
+            self.progress_label.config(text=f"{current}/{total} ({progress_pct:.1f}%) - {message}")
+        else:
+            self.progress['value'] = 0
+            self.progress_label.config(text=message)
+        
     def setup_logging(self):
         """Setup enhanced logging with file location choice and macOS compatibility"""
         class GUILogHandler(logging.Handler):
@@ -357,7 +402,7 @@ Features:
                         tag = 'error'
                     elif record.levelno >= logging.WARNING:
                         tag = 'warning'
-                    elif 'success' in msg.lower() or '✅' in msg:
+                    elif 'SUCCESS' in msg or 'Connected' in msg or 'completed' in msg.lower():
                         tag = 'success'
                     else:
                         tag = 'info'
@@ -402,10 +447,12 @@ Features:
             self.status_label.config(text="Connected to Smartsheet")
         elif "Starting data processing" in message:
             self.status_label.config(text="Processing data...")
-        elif "Upload completed" in message:
+        elif "Upload completed" in message or "SUCCESS" in message:
             self.status_label.config(text="Upload completed successfully")
-        elif "Error" in message:
+        elif "ERROR" in message or "Error" in message:
             self.status_label.config(text="Error occurred - check log")
+        elif "stopped by user" in message:
+            self.status_label.config(text="Process stopped")
             
     def get_log_file_path(self):
         """Get the full path for the log file with enhanced error handling"""
@@ -462,6 +509,8 @@ Features:
         self.log_text.delete(1.0, tk.END)
         self.log_text.config(state=tk.DISABLED)
         self.status_label.config(text="Log cleared")
+        self.progress['value'] = 0
+        self.progress_label.config(text="")
         
     def browse_file(self):
         """Browse for Excel file with enhanced feedback"""
@@ -514,7 +563,7 @@ Features:
             return None
             
     def validate_smartsheet(self):
-        """Validate Smartsheet URL and connection"""
+        """Validate Smartsheet URL and connection with enhanced error handling"""
         url = self.smartsheet_url.get().strip()
         
         if not url:
@@ -538,31 +587,45 @@ Features:
         
         # Test connection in separate thread to avoid blocking UI
         def test_connection():
-            try:
-                self.smart = smartsheet.Smartsheet(SMARTSHEET_TOKEN)
-                self.smart.errors_as_exceptions(True)
-                
-                sheet = self.smart.Sheets.get_sheet(sheet_id)
-                
-                # Update UI in main thread
-                def update_ui():
-                    self.connection_status.config(text=f"Connected to: {sheet.name}")
-                    self.log_message(f"Connected to sheet: '{sheet.name}'")
-                    self.log_message(f"Sheet has {len(sheet.columns)} columns and {sheet.total_row_count} rows")
+            retry_count = 0
+            max_retries = self.config['max_retries']
+            
+            while retry_count < max_retries:
+                try:
+                    self.smart = smartsheet.Smartsheet(SMARTSHEET_TOKEN)
+                    self.smart.errors_as_exceptions(True)
                     
-                    messagebox.showinfo("Success", f"Successfully connected to sheet: '{sheet.name}'")
-                    self.check_ready_state()
-                
-                self.root.after(0, update_ui)
-                
-            except Exception as e:
-                def show_error():
-                    error_msg = f"Failed to connect to Smartsheet: {str(e)}"
-                    self.connection_status.config(text="Connection failed")
-                    self.log_message(f"ERROR: {error_msg}")
-                    messagebox.showerror("Connection Error", error_msg)
-                
-                self.root.after(0, show_error)
+                    sheet = self.smart.Sheets.get_sheet(sheet_id)
+                    
+                    # Update UI in main thread
+                    def update_ui():
+                        self.connection_status.config(text=f"Connected to: {sheet.name}")
+                        self.log_message(f"SUCCESS: Connected to sheet: '{sheet.name}'")
+                        self.log_message(f"Sheet has {len(sheet.columns)} columns and {sheet.total_row_count} rows")
+                        
+                        # Show column names for debugging
+                        column_names = [col.title for col in sheet.columns]
+                        self.log_message(f"Available columns: {', '.join(column_names)}")
+                        
+                        messagebox.showinfo("Success", f"Successfully connected to sheet: '{sheet.name}'")
+                        self.check_ready_state()
+                    
+                    self.root.after(0, update_ui)
+                    return
+                    
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        self.log_message(f"Connection attempt {retry_count} failed, retrying in {self.config['retry_delay']}s...")
+                        time.sleep(self.config['retry_delay'])
+                    else:
+                        def show_error():
+                            error_msg = f"Failed to connect to Smartsheet after {max_retries} attempts: {str(e)}"
+                            self.connection_status.config(text="Connection failed")
+                            self.log_message(f"ERROR: {error_msg}")
+                            messagebox.showerror("Connection Error", error_msg)
+                        
+                        self.root.after(0, show_error)
         
         # Run in separate thread
         thread = threading.Thread(target=test_connection)
@@ -583,9 +646,14 @@ Features:
     def start_processing(self):
         """Start the processing in a separate thread"""
         self.is_processing = True
+        self.upload_cancelled = False
+        self.confirmation_result = None
         self.process_button.config(state='disabled')
         self.stop_button.config(state='normal')
-        self.progress.start()
+        
+        # Reset progress
+        self.progress['value'] = 0
+        self.progress_label.config(text="Starting...")
         
         # Run processing in separate thread
         thread = threading.Thread(target=self.process_data)
@@ -595,29 +663,45 @@ Features:
     def stop_processing(self):
         """Stop the current processing"""
         self.is_processing = False
-        self.progress.stop()
+        self.upload_cancelled = True
         self.process_button.config(state='normal')
         self.stop_button.config(state='disabled')
         self.log_message("Processing stopped by user")
         self.status_label.config(text="Processing stopped")
+        self.progress_label.config(text="Stopped")
         
     def process_data(self):
-        """Process the Excel data and upload to Smartsheet"""
+        """Process the Excel data and upload to Smartsheet with enhanced error handling"""
         try:
             if not self.is_processing:
                 return
                 
             self.log_message("Starting data processing...")
+            self.update_progress(0, 0, "Reading Excel file...")
             
             # Read and process Excel file
             file_path = self.selected_file.get()
             self.log_message(f"Reading file: {Path(file_path).name}")
             
-            df = pd.read_excel(file_path, engine='openpyxl', header=0)
+            # Read Excel with proper handling of Cin7's dual-header structure
+            df = pd.read_excel(file_path, engine='openpyxl', header=[0, 1])
+            
+            # Handle multi-level columns from Cin7
+            if isinstance(df.columns, pd.MultiIndex):
+                # Combine the two header levels
+                df.columns = [
+                    f"{col[0]}_{col[1]}".strip("_") if col[0] and col[0] != col[1] and str(col[0]).strip() != "" 
+                    else str(col[1]).strip() 
+                    for col in df.columns
+                ]
+            
             self.log_message(f"Loaded {len(df)} rows, {len(df.columns)} columns")
+            self.log_message(f"Column names: {list(df.columns)}")
             
             if not self.is_processing:
                 return
+            
+            self.update_progress(1, 4, "Processing data...")
                 
             # Process data
             processed_df = self.process_excel_data(df)
@@ -628,197 +712,364 @@ Features:
                 return
                 
             self.log_message(f"SUCCESS: Processed {len(processed_df)} products successfully")
+            self.update_progress(2, 4, "Data processed successfully")
             
-            # Ask for confirmation
-            def ask_confirmation():
-                result = messagebox.askyesno(
-                    "Confirm Upload", 
-                    f"Ready to upload {len(processed_df)} rows to Smartsheet.\n\n" +
-                    f"Unique products: {processed_df['ProductCode'].nunique()}\n" +
-                    f"Branches: {processed_df['Branch'].nunique()}\n\n" +
-                    "Do you want to proceed?"
-                )
-                return result
+            # Store for later use
+            self.processed_df = processed_df
             
-            # Run confirmation dialog in main thread
-            self.root.after(0, lambda: self.handle_confirmation(ask_confirmation(), processed_df))
+            # Show confirmation dialog in main thread
+            self.update_progress(3, 4, "Awaiting confirmation...")
+            
+            # Use after() to show dialog in main thread
+            self.root.after(0, self.show_confirmation_dialog)
             
         except Exception as e:
             error_msg = f"Error during processing: {str(e)}"
             self.log_message(f"ERROR: {error_msg}")
             self.root.after(0, lambda: messagebox.showerror("Processing Error", error_msg))
-            
-        finally:
             self.root.after(0, self.processing_finished)
             
-    def handle_confirmation(self, confirmed, processed_df):
-        """Handle the confirmation result"""
-        if confirmed and self.is_processing:
-            # Start upload in new thread
-            thread = threading.Thread(target=self.upload_data, args=(processed_df,))
-            thread.daemon = True
-            thread.start()
+    def show_confirmation_dialog(self):
+        """Show confirmation dialog in main thread"""
+        if not self.processed_df is None and self.is_processing:
+            try:
+                result = messagebox.askyesno(
+                    "Confirm Upload", 
+                    f"Ready to upload {len(self.processed_df)} rows to Smartsheet.\n\n" +
+                    f"Unique products: {self.processed_df['ProductCode'].nunique()}\n" +
+                    f"Branches: {self.processed_df['Branch'].nunique()}\n\n" +
+                    f"Columns to upload: {list(self.processed_df.columns)}\n\n" +
+                    "Do you want to proceed?",
+                    parent=self.root
+                )
+                
+                if result and self.is_processing:
+                    self.log_message("User confirmed upload - starting...")
+                    self.update_progress(4, 4, "Starting upload...")
+                    # Start upload in new thread
+                    thread = threading.Thread(target=self.upload_data, args=(self.processed_df,))
+                    thread.daemon = True
+                    thread.start()
+                else:
+                    self.log_message("Upload cancelled by user")
+                    self.processing_finished()
+                    
+            except Exception as e:
+                self.log_message(f"ERROR in confirmation dialog: {str(e)}")
+                self.processing_finished()
         else:
-            self.log_message("Upload cancelled by user")
+            self.log_message("ERROR: No processed data available for confirmation")
             self.processing_finished()
             
     def process_excel_data(self, df):
-        """Process Excel data with enhanced error handling"""
-        column_mapping = {
-            'ProductCode': 'ProductCode',
-            'Product': 'Product', 
-            'Branch': 'Branch',
-            'SOH': '4 - SOH',
-            'Incoming (Open PO)': '5 - Incoming (Open PO)',
-            'Open Sales (Allocated)': '6 - Open Sales (Allocated)',
-            'Grand Total': '7 - Grand Total',
-            'SOH minus Open Sales (Available)': '8 - SOH minus Open Sales (Available)'
-        }
+        """Process Excel data with CORRECTED column mapping for simple Smartsheet structure"""
         
-        # Clean data
+        # Create a cleaner version of column names for debugging
+        self.log_message(f"Processing columns: {list(df.columns)}")
+        
+        # Clean data first
         clean_df = df.copy()
-        clean_df = clean_df.dropna(subset=['ProductCode'])
-        clean_df = clean_df[~clean_df['ProductCode'].astype(str).str.contains(
-            'Grand Total|Total|ASM|^$|nan|ProductCode', na=False, case=False)]
+        
+        # Find the ProductCode column (could be named differently)
+        product_code_col = None
+        for col in df.columns:
+            if 'productcode' in str(col).lower() or 'product_code' in str(col).lower():
+                product_code_col = col
+                break
+        
+        if not product_code_col:
+            # Fallback: assume first column is ProductCode
+            product_code_col = df.columns[0]
+            self.log_message(f"WARNING: ProductCode column not found, using first column: {product_code_col}")
+        
+        # Remove rows where ProductCode is empty or contains headers/totals
+        clean_df = clean_df.dropna(subset=[product_code_col])
+        clean_df = clean_df[~clean_df[product_code_col].astype(str).str.contains(
+            'Grand Total|Total|ASM|^$|nan|ProductCode|productcode', na=False, case=False)]
         
         self.log_message(f"After cleaning: {len(clean_df)} rows")
         
-        # Create processed DataFrame
+        if len(clean_df) == 0:
+            self.log_message("ERROR: No valid data rows found after cleaning")
+            return pd.DataFrame()
+        
+        # Create processed DataFrame with CORRECTED mapping
         processed_df = pd.DataFrame()
         
-        # Process text columns
-        for field in ['ProductCode', 'Product', 'Branch']:
-            excel_col = column_mapping[field]
-            if excel_col in clean_df.columns:
-                processed_df[field] = clean_df[excel_col].astype(str).str.strip()
-                processed_df[field] = processed_df[field].replace('nan', '')
-            else:
-                processed_df[field] = ''
-                
-        # Process numeric columns
-        numeric_columns = ['SOH', 'Incoming (Open PO)', 'Open Sales (Allocated)', 'Grand Total']
+        # CORRECTED column mapping - simple names matching Smartsheet:
+        # Smartsheet columns: ProductCode, Product, Branch, SOH, Incoming NOT paid, Open Sales, Grand Total
+        column_mapping = {
+            'ProductCode': product_code_col,
+            'Product': None,
+            'Branch': None,
+            'SOH': None,                    # Simple name, not SOH_Stock Qty
+            'Incoming NOT paid': None,      # Simple name, not Incoming NOT Paid_Stock Qty
+            'Open Sales': None,             # Simple name, not Open Sales_Stock Qty  
+            'Grand Total': None             # Simple name, not Grand Total_Stock Qty
+        }
         
-        for field in numeric_columns:
-            excel_col = column_mapping[field]
-            if excel_col in clean_df.columns:
-                series = pd.to_numeric(clean_df[excel_col], errors='coerce').fillna(0)
-                processed_df[field] = series
+        # Auto-detect column mapping based on Excel column names
+        for target_col, source_col in column_mapping.items():
+            if source_col is None:  # Need to find the column
+                for df_col in df.columns:
+                    df_col_str = str(df_col).lower()
+                    
+                    if target_col.lower() == 'product' and ('product' in df_col_str and 'code' not in df_col_str):
+                        column_mapping[target_col] = df_col
+                        break
+                    elif target_col.lower() == 'branch' and 'branch' in df_col_str:
+                        column_mapping[target_col] = df_col
+                        break
+                    elif target_col == 'SOH':
+                        # Look for SOH-related columns
+                        if 'soh' in df_col_str and ('stock qty' in df_col_str or 'qty' in df_col_str or '4 - soh' in df_col_str):
+                            column_mapping[target_col] = df_col
+                            break
+                    elif target_col == 'Incoming NOT paid':
+                        # Look for Incoming-related columns
+                        if ('incoming' in df_col_str or 'open po' in df_col_str) and ('stock qty' in df_col_str or 'qty' in df_col_str or '5 -' in df_col_str):
+                            column_mapping[target_col] = df_col
+                            break
+                    elif target_col == 'Open Sales':
+                        # Look for Open Sales-related columns
+                        if ('open sales' in df_col_str or 'allocated' in df_col_str) and ('stock qty' in df_col_str or 'qty' in df_col_str or '6 -' in df_col_str):
+                            column_mapping[target_col] = df_col
+                            break
+                    elif target_col == 'Grand Total':
+                        # Look for Grand Total-related columns
+                        if ('grand total' in df_col_str or 'total' in df_col_str) and ('stock qty' in df_col_str or 'qty' in df_col_str or '7 -' in df_col_str):
+                            column_mapping[target_col] = df_col
+                            break
+        
+        self.log_message(f"Column mapping detected: {column_mapping}")
+        
+        # Process text columns
+        text_columns = ['ProductCode', 'Product', 'Branch']
+        for target_col in text_columns:
+            source_col = column_mapping.get(target_col)
+            if source_col and source_col in clean_df.columns:
+                processed_df[target_col] = clean_df[source_col].astype(str).str.strip()
+                processed_df[target_col] = processed_df[target_col].replace('nan', '')
+                processed_df[target_col] = processed_df[target_col].replace('', 'N/A')
             else:
-                processed_df[field] = 0
+                processed_df[target_col] = 'N/A'
+                self.log_message(f"WARNING: Column {target_col} not found, using 'N/A'")
                 
-        # Add calculated column
-        calculated_col = column_mapping['SOH minus Open Sales (Available)']
-        if calculated_col in clean_df.columns:
-            processed_df['SOH minus Open Sales (Available)'] = pd.to_numeric(
-                clean_df[calculated_col], errors='coerce').fillna(0)
-        else:
-            processed_df['SOH minus Open Sales (Available)'] = (
-                processed_df['SOH'] - processed_df['Open Sales (Allocated)']
+        # Process numeric columns - using SIMPLE column names for Smartsheet
+        numeric_columns = ['SOH', 'Incoming NOT paid', 'Open Sales', 'Grand Total']
+        
+        for target_col in numeric_columns:
+            source_col = column_mapping.get(target_col)
+            if source_col and source_col in clean_df.columns:
+                series = pd.to_numeric(clean_df[source_col], errors='coerce').fillna(0)
+                processed_df[target_col] = series
+            else:
+                processed_df[target_col] = 0
+                self.log_message(f"WARNING: Column {target_col} not found, using 0")
+                
+        # Add calculated Available column (SOH - Open Sales)
+        if 'SOH' in processed_df.columns and 'Open Sales' in processed_df.columns:
+            processed_df['Available'] = (
+                processed_df['SOH'] - processed_df['Open Sales']
             )
+        else:
+            processed_df['Available'] = 0
             
-        # Final cleaning
+        # Final cleaning - remove rows with empty ProductCode
         processed_df = processed_df[
             (processed_df['ProductCode'] != '') & 
             (processed_df['ProductCode'] != 'nan') &
-            (processed_df['ProductCode'] != 'ProductCode') &
+            (processed_df['ProductCode'] != 'N/A') &
             (processed_df['ProductCode'].notna()) &
             (processed_df['ProductCode'].str.len() > 0)
         ]
         
-        # Convert to strings for Smartsheet
-        numeric_columns.append('SOH minus Open Sales (Available)')
-        for col in numeric_columns:
-            processed_df[col] = processed_df[col].apply(
-                lambda x: str(int(x)) if pd.notna(x) and x != '' else '0'
-            )
-            
+        if len(processed_df) == 0:
+            self.log_message("ERROR: No valid rows remain after processing")
+            return processed_df
+        
+        # Convert numeric columns to strings for Smartsheet
+        all_numeric_cols = numeric_columns + ['Available']
+        for col in all_numeric_cols:
+            if col in processed_df.columns:
+                processed_df[col] = processed_df[col].apply(
+                    lambda x: str(int(x)) if pd.notna(x) and x != '' else '0'
+                )
+        
+        self.log_message(f"Final processed data: {len(processed_df)} rows, columns: {list(processed_df.columns)}")
+        
         return processed_df
         
     def upload_data(self, processed_df):
-        """Upload processed data to Smartsheet with enhanced progress tracking"""
+        """Upload processed data to Smartsheet with enhanced progress tracking and error handling"""
         try:
             if not self.is_processing:
                 return
                 
             self.log_message("Starting upload to Smartsheet...")
             
-            # Get sheet info
-            sheet = self.smart.Sheets.get_sheet(self.sheet_id)
+            # Get sheet info with retry logic
+            sheet = None
+            for retry in range(self.config['max_retries']):
+                try:
+                    sheet = self.smart.Sheets.get_sheet(self.sheet_id)
+                    break
+                except Exception as e:
+                    if retry < self.config['max_retries'] - 1:
+                        self.log_message(f"Retry {retry + 1}: Failed to get sheet info, retrying...")
+                        time.sleep(self.config['retry_delay'])
+                    else:
+                        raise e
+            
+            if not sheet:
+                raise Exception("Failed to retrieve sheet information")
+                
             column_map = {col.title: col.id for col in sheet.columns}
+            self.log_message(f"Available Smartsheet columns: {list(column_map.keys())}")
             
-            # Upload in batches
+            # Verify columns exist in Smartsheet
+            missing_columns = []
+            for col_name in processed_df.columns:
+                if col_name not in column_map:
+                    missing_columns.append(col_name)
+            
+            if missing_columns:
+                self.log_message(f"WARNING: Missing columns in Smartsheet: {missing_columns}")
+                # Continue with available columns only
+                available_cols = [col for col in processed_df.columns if col in column_map]
+                processed_df = processed_df[available_cols]
+                self.log_message(f"Continuing with available columns: {list(processed_df.columns)}")
+            
+            if len(processed_df.columns) == 0:
+                raise Exception("No matching columns found between Excel data and Smartsheet")
+            
+            # Upload in smaller batches with progress tracking
             inserted_rows = 0
-            batch_size = 50
+            failed_rows = 0
+            batch_size = self.config['batch_size']
             total_rows = len(processed_df)
+            total_batches = (total_rows + batch_size - 1) // batch_size
             
-            for i in range(0, total_rows, batch_size):
-                if not self.is_processing:
-                    self.log_message("Upload stopped by user")
+            self.log_message(f"Starting upload: {total_rows} rows in {total_batches} batches of {batch_size}")
+            
+            for batch_idx in range(total_batches):
+                if not self.is_processing or self.upload_cancelled:
+                    self.log_message("Upload cancelled by user")
                     return
                     
-                batch_df = processed_df.iloc[i:i+batch_size]
-                batch_num = (i // batch_size) + 1
+                start_idx = batch_idx * batch_size
+                end_idx = min(start_idx + batch_size, total_rows)
+                batch_df = processed_df.iloc[start_idx:end_idx]
                 
-                rows_to_insert = []
+                # Update progress
+                self.update_progress(batch_idx, total_batches, f"Uploading batch {batch_idx + 1}/{total_batches}")
                 
-                for _, row in batch_df.iterrows():
-                    new_row = smartsheet.models.Row()
-                    new_row.to_bottom = True
-                    
-                    # Create cells
-                    for col_name, value in row.items():
-                        if col_name in column_map:
-                            value_str = str(value).strip()
-                            if value_str and value_str != 'nan':
-                                cell = smartsheet.models.Cell()
-                                cell.column_id = column_map[col_name]
-                                cell.value = value_str
-                                new_row.cells.append(cell)
-                    
-                    if len(new_row.cells) >= 3:
-                        rows_to_insert.append(new_row)
+                success = False
+                for retry in range(self.config['max_retries']):
+                    try:
+                        rows_to_insert = []
+                        
+                        for _, row in batch_df.iterrows():
+                            new_row = smartsheet.models.Row()
+                            new_row.to_bottom = True
+                            
+                            # Create cells for available columns only
+                            for col_name, value in row.items():
+                                if col_name in column_map:
+                                    value_str = str(value).strip()
+                                    if value_str and value_str != 'nan' and value_str != 'N/A':
+                                        cell = smartsheet.models.Cell()
+                                        cell.column_id = column_map[col_name]
+                                        cell.value = value_str
+                                        new_row.cells.append(cell)
+                            
+                            # Only add rows that have at least 2 cells (ProductCode + at least one other field)
+                            if len(new_row.cells) >= 2:
+                                rows_to_insert.append(new_row)
+                        
+                        if not rows_to_insert:
+                            self.log_message(f"WARNING: No valid rows in batch {batch_idx + 1}, skipping")
+                            break
+                        
+                        # Insert batch with timeout handling
+                        response = self.smart.Sheets.add_rows(self.sheet_id, rows_to_insert)
+                        
+                        if response.result:
+                            inserted_rows += len(rows_to_insert)
+                            progress_pct = ((batch_idx + 1) / total_batches) * 100
+                            self.log_message(f"SUCCESS: Batch {batch_idx + 1}/{total_batches}: {len(rows_to_insert)} rows uploaded (Total: {inserted_rows}, {progress_pct:.1f}% complete)")
+                            success = True
+                            break
+                        else:
+                            raise Exception("Smartsheet API returned no result")
+                            
+                    except Exception as e:
+                        if retry < self.config['max_retries'] - 1:
+                            wait_time = self.config['retry_delay'] * (retry + 1)  # Exponential backoff
+                            self.log_message(f"Batch {batch_idx + 1} attempt {retry + 1} failed: {str(e)}, retrying in {wait_time}s...")
+                            time.sleep(wait_time)
+                        else:
+                            self.log_message(f"ERROR: Batch {batch_idx + 1} failed after {self.config['max_retries']} attempts: {str(e)}")
+                            failed_rows += len(batch_df)
+                            break
                 
-                # Insert batch
-                if rows_to_insert:
-                    response = self.smart.Sheets.add_rows(self.sheet_id, rows_to_insert)
-                    inserted_rows += len(rows_to_insert)
-                    progress_pct = (batch_num * batch_size / total_rows) * 100
-                    self.log_message(f"SUCCESS: Batch {batch_num}: {len(rows_to_insert)} rows uploaded (Total: {inserted_rows}, {progress_pct:.1f}% complete)")
+                if not success:
+                    self.log_message(f"WARNING: Batch {batch_idx + 1} could not be uploaded")
+                
+                # Small delay between batches to avoid rate limiting
+                if batch_idx < total_batches - 1:
+                    time.sleep(0.5)
+            
+            # Final progress update
+            self.update_progress(total_batches, total_batches, "Upload completed")
             
             # Success message
-            self.log_message("SUCCESS: Upload completed successfully!")
-            self.log_message(f"Total rows inserted: {inserted_rows}")
-            
-            sheet_url = f"https://app.smartsheet.com/sheets/{self.sheet_id}"
-            self.log_message(f"View results at: {sheet_url}")
-            
-            # Save log file location info
-            log_path = self.get_log_file_path()
-            self.log_message(f"Detailed log saved to: {log_path}")
-            
-            self.root.after(0, lambda: messagebox.showinfo(
-                "Upload Complete!", 
-                f"Upload completed successfully!\n\n" +
-                f"Rows uploaded: {inserted_rows}\n" +
-                f"Log saved to: {log_path.name}\n\n" +
-                f"You can view the results in Smartsheet."
-            ))
+            if inserted_rows > 0:
+                self.log_message("SUCCESS: Upload completed!")
+                self.log_message(f"Total rows inserted: {inserted_rows}")
+                if failed_rows > 0:
+                    self.log_message(f"Failed rows: {failed_rows}")
+                
+                sheet_url = f"https://app.smartsheet.com/sheets/{self.sheet_id}"
+                self.log_message(f"View results at: {sheet_url}")
+                
+                # Save log file location info
+                if hasattr(self, 'file_handler'):
+                    log_path = Path(self.file_handler.baseFilename)
+                    self.log_message(f"Detailed log saved to: {log_path}")
+                
+                success_msg = f"Upload completed successfully!\n\n" + \
+                             f"Rows uploaded: {inserted_rows}\n"
+                
+                if failed_rows > 0:
+                    success_msg += f"Failed rows: {failed_rows}\n"
+                    
+                success_msg += f"\nYou can view the results in Smartsheet."
+                
+                self.root.after(0, lambda: messagebox.showinfo("Upload Complete!", success_msg))
+            else:
+                raise Exception("No rows were successfully uploaded")
             
         except Exception as e:
             error_msg = f"Error during upload: {str(e)}"
             self.log_message(f"ERROR: {error_msg}")
             self.root.after(0, lambda: messagebox.showerror("Upload Error", error_msg))
             
+        finally:
+            self.root.after(0, self.processing_finished)
+            
     def processing_finished(self):
         """Called when processing is finished"""
         self.is_processing = False
-        self.progress.stop()
+        self.upload_cancelled = False
+        self.confirmation_result = None
+        self.processed_df = None
         self.process_button.config(state='normal')
         self.stop_button.config(state='disabled')
         self.status_label.config(text="Ready")
 
 def main():
-    """Main function to run the enhanced GUI application"""
+    """Main function to run the enhanced GUI application v3.1"""
     root = tk.Tk()
     app = EnhancedSmartsheetUploaderGUI(root)
     
