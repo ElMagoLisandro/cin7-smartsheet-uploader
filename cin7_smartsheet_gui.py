@@ -787,6 +787,9 @@ Logs Directory: logs/"""
             if self.column_mapping_var.get():
                 working_df = self.apply_cin7_column_mapping(working_df)
             
+            # Clean numeric data to remove commas and ensure proper number format
+            working_df = self.clean_numeric_data(working_df)
+            
             # Remove invalid rows if not in verbatim mode
             if not self.verbatim_var.get():
                 initial_rows = len(working_df)
@@ -816,7 +819,579 @@ Logs Directory: logs/"""
             self.message_queue.put(("log", f"Error processing Excel data: {str(e)}", "ERROR"))
             return None
     
-    def apply_cin7_column_mapping(self, df: pd.DataFrame) -> pd.DataFrame:
+    def clean_numeric_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Clean numeric data to remove commas and ensure proper number format for Smartsheet"""
+        try:
+            self.message_queue.put(("log", "Cleaning numeric data for Smartsheet compatibility...", "INFO"))
+            
+            # Identify potential numeric columns
+            numeric_column_patterns = ['soh', 'stock', 'qty', 'quantity', 'total', 'value', 'incoming', 'sales', 'available']
+            
+            cleaned_df = df.copy()
+            
+            for col in cleaned_df.columns:
+                col_lower = str(col).lower()
+                
+                # Check if this looks like a numeric column
+                is_numeric_col = any(pattern in col_lower for pattern in numeric_column_patterns)
+                
+                if is_numeric_col:
+                    self.message_queue.put(("log", f"  - Cleaning numeric column: {col}", "INFO"))
+                    
+                    # Clean numeric values
+                    cleaned_values = []
+                    for value in cleaned_df[col]:
+                        try:
+                            # Convert to string first
+                            str_value = str(value).strip()
+                            
+                            # Skip empty values
+                            if not str_value or str_value == 'nan' or str_value == '':
+                                cleaned_values.append('0')
+                                continue
+                            
+                            # Remove commas and clean
+                            clean_value = str_value.replace(',', '').replace('
+        """Apply intelligent Cin7 column mapping"""
+        try:
+            self.message_queue.put(("log", "Applying Cin7 column mapping...", "INFO"))
+            
+            mapped_df = pd.DataFrame()
+            mapping_results = {}
+            
+            # Map each target column
+            for target_col, search_patterns in self.cin7_column_mapping.items():
+                source_col = None
+                
+                # Search for matching column
+                for df_col in df.columns:
+                    df_col_lower = str(df_col).lower()
+                    if any(pattern in df_col_lower for pattern in search_patterns):
+                        source_col = df_col
+                        break
+                
+                if source_col:
+                    mapped_df[target_col] = df[source_col]
+                    mapping_results[target_col] = source_col
+                    self.message_queue.put(("log", f"  - {target_col} ← {source_col}", "INFO"))
+                else:
+                    # Use default values for missing columns
+                    if target_col in ['SOH', 'Incoming NOT paid', 'Open Sales', 'Grand Total']:
+                        mapped_df[target_col] = '0'
+                    else:
+                        mapped_df[target_col] = 'N/A'
+                    mapping_results[target_col] = 'Not found (using default)'
+                    self.message_queue.put(("log", f"  - {target_col} ← Default value (column not found)", "WARNING"))
+            
+            # Add calculated Available column
+            if all(col in mapped_df.columns for col in ['SOH', 'Open Sales']):
+                try:
+                    soh_numeric = pd.to_numeric(mapped_df['SOH'], errors='coerce').fillna(0)
+                    open_sales_numeric = pd.to_numeric(mapped_df['Open Sales'], errors='coerce').fillna(0)
+                    mapped_df['Available'] = (soh_numeric - open_sales_numeric).astype(int).astype(str)
+                    self.message_queue.put(("log", "  - Available ← Calculated (SOH - Open Sales)", "INFO"))
+                except:
+                    mapped_df['Available'] = '0'
+                    self.message_queue.put(("log", "  - Available ← Default (calculation failed)", "WARNING"))
+            
+            self.message_queue.put(("log", f"Column mapping complete: {len(mapping_results)} columns mapped", "SUCCESS"))
+            return mapped_df
+            
+        except Exception as e:
+            self.message_queue.put(("log", f"Error applying column mapping: {str(e)}", "WARNING"))
+            return df
+    
+    def show_enhanced_confirmation_dialog(self, processed_df: pd.DataFrame):
+        """Enhanced confirmation dialog with better handling"""
+        try:
+            # Prepare summary information
+            unique_products = processed_df.iloc[:, 0].nunique() if len(processed_df.columns) > 0 else 0
+            unique_branches = processed_df['Branch'].nunique() if 'Branch' in processed_df.columns else 0
+            
+            # Create detailed message
+            message = f"""Ready to upload {len(processed_df)} rows to Smartsheet.
+
+Data Summary:
+• Total rows: {len(processed_df):,}
+• Unique products: {unique_products:,}
+• Unique branches: {unique_branches}
+• Upload mode: {'OVERWRITE (clears sheet first)' if self.overwrite_var.get() else 'APPEND (adds to existing data)'}
+
+Columns to upload:
+{', '.join(processed_df.columns)}
+
+Do you want to proceed with the upload?
+
+⚠️ This operation cannot be undone."""
+            
+            # Show dialog and store result
+            result = messagebox.askyesno("Confirm Upload", message, parent=self.root)
+            
+            self.confirmation_result = result
+            
+            if result:
+                self.message_queue.put(("log", "User confirmed upload - proceeding...", "INFO"))
+            else:
+                self.message_queue.put(("log", "Upload cancelled by user", "WARNING"))
+                
+        except Exception as e:
+            self.message_queue.put(("log", f"Error in confirmation dialog: {str(e)}", "ERROR"))
+            self.confirmation_result = False
+    
+    def clear_smartsheet_data_enhanced(self):
+        """Enhanced data clearing with proper error handling"""
+        try:
+            self.message_queue.put(("log", "Clearing existing Smartsheet data...", "INFO"))
+            
+            # Get all rows with retry logic
+            for attempt in range(self.upload_config['max_retries']):
+                try:
+                    sheet = self.smartsheet_client.Sheets.get_sheet(
+                        self.smartsheet_sheet.id,
+                        include=['rowPermalinks']
+                    )
+                    break
+                except Exception as e:
+                    if attempt == self.upload_config['max_retries'] - 1:
+                        raise e
+                    self.message_queue.put(("log", f"Retry {attempt + 1}: Getting sheet data", "WARNING"))
+                    time.sleep(self.upload_config['retry_delay'])
+            
+            if not sheet.rows:
+                self.message_queue.put(("log", "No existing rows to clear", "INFO"))
+                return
+            
+            # Delete rows in batches
+            row_ids = [row.id for row in sheet.rows]
+            batch_size = 400
+            total_batches = (len(row_ids) + batch_size - 1) // batch_size
+            
+            self.message_queue.put(("log", f"Clearing {len(row_ids)} rows in {total_batches} batches", "INFO"))
+            
+            for batch_num in range(total_batches):
+                if self.upload_cancelled:
+                    return
+                
+                start_idx = batch_num * batch_size
+                end_idx = min((batch_num + 1) * batch_size, len(row_ids))
+                batch_ids = row_ids[start_idx:end_idx]
+                
+                # Delete with retry logic
+                for attempt in range(self.upload_config['max_retries']):
+                    try:
+                        self.smartsheet_client.Sheets.delete_rows(self.smartsheet_sheet.id, batch_ids)
+                        break
+                    except Exception as e:
+                        if attempt == self.upload_config['max_retries'] - 1:
+                            raise e
+                        self.message_queue.put(("log", f"Retry {attempt + 1}: Deleting batch {batch_num + 1}", "WARNING"))
+                        time.sleep(self.upload_config['retry_delay'])
+                
+                self.message_queue.put(("log", f"Cleared batch {batch_num + 1}/{total_batches}: {len(batch_ids)} rows", "INFO"))
+                
+                if batch_num < total_batches - 1:
+                    time.sleep(self.upload_config['rate_limit_delay'])
+            
+            self.message_queue.put(("log", f"Successfully cleared all {len(row_ids)} existing rows", "SUCCESS"))
+            
+        except Exception as e:
+            self.message_queue.put(("log", f"Error clearing data: {str(e)}", "ERROR"))
+            raise e
+    
+    def upload_data_enhanced(self, df: pd.DataFrame) -> bool:
+        """Enhanced upload with comprehensive error handling"""
+        try:
+            total_rows = len(df)
+            batch_size = self.upload_config['batch_size']
+            total_batches = (total_rows + batch_size - 1) // batch_size
+            uploaded_rows = 0
+            
+            self.message_queue.put(("log", f"Starting upload: {total_rows} rows in {total_batches} batches", "INFO"))
+            
+            # Get column mapping
+            column_map = {col.title: col.id for col in self.smartsheet_sheet.columns}
+            
+            for batch_num in range(total_batches):
+                if self.upload_cancelled:
+                    self.message_queue.put(("log", "Upload cancelled by user", "WARNING"))
+                    return False
+                
+                start_idx = batch_num * batch_size
+                end_idx = min((batch_num + 1) * batch_size, total_rows)
+                batch_df = df.iloc[start_idx:end_idx]
+                
+                # Prepare rows for Smartsheet
+                rows_to_add = []
+                for _, row in batch_df.iterrows():
+                    new_row = smartsheet.models.Row()
+                    new_row.to_bottom = True
+                    
+                    for col_name, value in row.items():
+                        if col_name in column_map and str(value).strip() and str(value) != 'nan':
+                            cell = smartsheet.models.Cell()
+                            cell.column_id = column_map[col_name]
+                            cell.value = str(value).strip()
+                            new_row.cells.append(cell)
+                    
+                    if new_row.cells:
+                        rows_to_add.append(new_row)
+                
+                # Upload batch with retry logic
+                success = False
+                for attempt in range(self.upload_config['max_retries']):
+                    try:
+                        if self.upload_cancelled:
+                            return False
+                        
+                        response = self.smartsheet_client.Sheets.add_rows(self.smartsheet_sheet.id, rows_to_add)
+                        success = True
+                        break
+                        
+                    except requests.exceptions.Timeout:
+                        if attempt < self.upload_config['max_retries'] - 1:
+                            self.message_queue.put(("log", f"Timeout on batch {batch_num + 1}, retry {attempt + 1}", "WARNING"))
+                            time.sleep(self.upload_config['retry_delay'] * (attempt + 1))
+                        else:
+                            raise
+                    except Exception as e:
+                        if attempt < self.upload_config['max_retries'] - 1:
+                            self.message_queue.put(("log", f"Error on batch {batch_num + 1}, retry {attempt + 1}: {str(e)}", "WARNING"))
+                            time.sleep(self.upload_config['retry_delay'] * (attempt + 1))
+                        else:
+                            raise
+                
+                if not success:
+                    self.message_queue.put(("log", f"Failed to upload batch {batch_num + 1} after {self.upload_config['max_retries']} attempts", "ERROR"))
+                    return False
+                
+                uploaded_rows += len(rows_to_add)
+                progress_pct = 40 + (uploaded_rows / total_rows) * 50
+                
+                self.message_queue.put(("log", f"Batch {batch_num + 1}/{total_batches}: {len(rows_to_add)} rows uploaded (Total: {uploaded_rows:,}, {(uploaded_rows/total_rows)*100:.1f}%)", "SUCCESS"))
+                self.message_queue.put(("progress_update", f"Uploading: {uploaded_rows:,}/{total_rows:,} rows", progress_pct))
+                
+                if batch_num < total_batches - 1:
+                    time.sleep(self.upload_config['rate_limit_delay'])
+            
+            return True
+            
+        except Exception as e:
+            self.message_queue.put(("log", f"Upload failed: {str(e)}", "ERROR"))
+            return False
+    
+    def preview_data_threaded(self):
+        """Enhanced data preview with TreeView window"""
+        if not self.excel_file_path:
+            messagebox.showwarning("No File", "Please select an Excel file first")
+            self.message_queue.put(("reset_preview_button", None, None))
+            return
+        
+        def preview_data():
+            try:
+                processed_df = self.process_cin7_excel_data()
+                
+                if processed_df is not None and not processed_df.empty:
+                    self.root.after(0, lambda: self.show_preview_window(processed_df))
+                else:
+                    self.message_queue.put(("log", "No data to preview", "WARNING"))
+                    
+            except Exception as e:
+                self.message_queue.put(("log", f"Error creating preview: {str(e)}", "ERROR"))
+            finally:
+                self.message_queue.put(("reset_preview_button", None, None))
+        
+        threading.Thread(target=preview_data, daemon=True).start()
+    
+    def show_preview_window(self, df: pd.DataFrame):
+        """Enhanced preview window with TreeView"""
+        preview_window = tk.Toplevel(self.root)
+        preview_window.title("Data Preview - Cin7 to Smartsheet")
+        preview_window.geometry("1000x700")
+        preview_window.transient(self.root)
+        preview_window.grab_set()
+        
+        # Create main frame
+        main_frame = ttk.Frame(preview_window, padding=10)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Info section
+        info_frame = ttk.Frame(main_frame)
+        info_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(info_frame, text=f"Preview: First 100 rows of {len(df)} total rows", 
+                 font=("Arial", 12, "bold")).pack(anchor=tk.W)
+        ttk.Label(info_frame, text=f"Columns: {', '.join(df.columns)}", 
+                 font=("Arial", 9)).pack(anchor=tk.W, pady=(5, 0))
+        
+        # Treeview with scrollbars
+        tree_frame = ttk.Frame(main_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+        
+        tree = ttk.Treeview(tree_frame)
+        
+        # Configure columns (limit to first 8 for readability)
+        display_columns = list(df.columns[:8])
+        tree['columns'] = display_columns
+        tree['show'] = 'tree headings'
+        
+        # Column headings
+        tree.heading('#0', text='Row')
+        tree.column('#0', width=50)
+        
+        for col in display_columns:
+            tree.heading(col, text=str(col))
+            tree.column(col, width=120)
+        
+        # Add data (first 100 rows)
+        preview_df = df.head(100)
+        for idx, row in preview_df.iterrows():
+            values = [str(row[col])[:50] for col in display_columns]
+            tree.insert('', 'end', text=str(idx + 1), values=values)
+        
+        # Scrollbars
+        v_scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree.yview)
+        h_scrollbar = ttk.Scrollbar(tree_frame, orient=tk.HORIZONTAL, command=tree.xview)
+        tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
+        
+        tree.grid(row=0, column=0, sticky='nsew')
+        v_scrollbar.grid(row=0, column=1, sticky='ns')
+        h_scrollbar.grid(row=1, column=0, sticky='ew')
+        
+        tree_frame.grid_rowconfigure(0, weight=1)
+        tree_frame.grid_columnconfigure(0, weight=1)
+        
+        # Button frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        ttk.Button(button_frame, text="Close Preview", command=preview_window.destroy).pack(side=tk.RIGHT)
+        
+        if len(df.columns) > 8:
+            ttk.Label(button_frame, text=f"Showing first 8 of {len(df.columns)} columns", 
+                     font=("Arial", 9)).pack(side=tk.LEFT)
+    
+    def extract_sheet_id_enhanced(self, url: str) -> Optional[str]:
+        """Enhanced sheet ID extraction"""
+        try:
+            if '/sheets/' in url:
+                return url.split('/sheets/')[1].split('?')[0].split('/')[0]
+            elif '/b/publish?EQBCT=' in url:
+                return url.split('EQBCT=')[1].split('&')[0]
+            else:
+                match = re.search(r'\d{19}', url)
+                if match:
+                    return match.group()
+                match = re.search(r'\d{10,}', url)
+                if match:
+                    return match.group()
+        except Exception as e:
+            self.message_queue.put(("log", f"Error extracting sheet ID: {str(e)}", "ERROR"))
+        return None
+    
+    def cancel_upload(self):
+        """Enhanced upload cancellation"""
+        if self.is_processing:
+            self.upload_cancelled = True
+            self.confirmation_result = False
+            self.message_queue.put(("log", "Cancelling upload...", "WARNING"))
+        else:
+            messagebox.showinfo("No Upload", "No upload is currently in progress")
+    
+    def clear_log(self):
+        """Clear the log display"""
+        self.log_text.delete(1.0, tk.END)
+        self.add_log_message("Log cleared", "INFO")
+    
+    def load_saved_config(self):
+        """Load saved configuration into UI with default token"""
+        try:
+            # Load API token (use saved or default)
+            api_token = self.config.get('api_token', DEFAULT_SMARTSHEET_TOKEN)
+            
+            # Clear and insert API token
+            self.api_token_entry.delete(0, tk.END)
+            if api_token:
+                self.api_token_entry.insert(0, api_token)
+                print(f"Token loaded: {len(api_token)} characters")
+            else:
+                # Fallback - insert default token
+                self.api_token_entry.insert(0, DEFAULT_SMARTSHEET_TOKEN)
+                print(f"Using default token: {len(DEFAULT_SMARTSHEET_TOKEN)} characters")
+            
+            # Load sheet URL
+            if self.config.get('sheet_url'):
+                self.sheet_url_entry.delete(0, tk.END)
+                self.sheet_url_entry.insert(0, self.config['sheet_url'])
+            
+            if self.config.get('window_geometry'):
+                self.root.geometry(self.config['window_geometry'])
+            
+            # Set options
+            self.overwrite_var.set(self.config.get('overwrite_mode', True))
+            self.verbatim_var.set(self.config.get('verbatim_copy', True))
+            self.column_mapping_var.set(self.config.get('column_mapping', True))
+            
+            # Auto-connect if credentials are available
+            if api_token and self.config.get('sheet_url'):
+                self.add_log_message("Auto-connecting with saved credentials...", "INFO")
+                self.root.after(1000, self.connect_smartsheet_immediate_response)
+                
+        except Exception as e:
+            self.add_log_message(f"Error loading saved config: {str(e)}")
+            # Emergency fallback - ensure token is there
+            try:
+                self.api_token_entry.delete(0, tk.END)
+                self.api_token_entry.insert(0, DEFAULT_SMARTSHEET_TOKEN)
+                print("Emergency token fallback applied")
+            except:
+                pass
+    
+    def process_message_queue(self):
+        """Process messages from background threads"""
+        try:
+            while True:
+                message_type, message, tag = self.message_queue.get_nowait()
+                
+                if message_type == "log":
+                    self.add_log_message(message, tag)
+                
+                elif message_type == "progress_update":
+                    self.progress_var.set(message)
+                    if tag is not None:
+                        self.progress_bar['value'] = tag
+                
+                elif message_type == "file_selected":
+                    self.analyze_button.config(state="normal")
+                    self.file_info_label.config(text=f"File: {message}")
+                
+                elif message_type == "file_analyzed":
+                    self.preview_button.config(state="normal")
+                    self.file_info_label.config(text=f"Analyzed: {message}")
+                
+                elif message_type == "connection_success":
+                    self.connection_status_var.set(f"Connected: {message}")
+                    self.connection_status_label.config(foreground="green")
+                    self.connection_indicator.config(text="● Connected", foreground="green")
+                    self.test_connection_button.config(state="normal")
+                    if self.excel_file_path:
+                        self.upload_button.config(state="normal")
+                
+                elif message_type == "connection_failed":
+                    self.connection_status_var.set("Connection failed")
+                    self.connection_status_label.config(foreground="red")
+                    self.connection_indicator.config(text="● Not Connected", foreground="red")
+                    self.test_connection_button.config(state="disabled")
+                    self.upload_button.config(state="disabled")
+                
+                elif message_type == "upload_started":
+                    self.cancel_button.config(state="normal")
+                    self.upload_button.config(state="disabled")
+                    self.progress_bar['value'] = 0
+                
+                elif message_type == "upload_finished":
+                    self.cancel_button.config(state="disabled")
+                    if self.excel_file_path and self.smartsheet_client:
+                        self.upload_button.config(state="normal")
+                    self.upload_button.config(text="🚀 Start Complete Upload Process")
+                
+                # Reset button states
+                elif message_type == "reset_browse_button":
+                    self.browse_button.config(text="📁 Browse Excel File")
+                elif message_type == "reset_analyze_button":
+                    self.analyze_button.config(text="🔍 Analyze Structure")
+                elif message_type == "reset_connect_button":
+                    self.connect_button.config(text="🔗 Connect")
+                elif message_type == "reset_test_button":
+                    self.test_connection_button.config(text="🧪 Test")
+                elif message_type == "reset_upload_button":
+                    self.upload_button.config(text="🚀 Start Complete Upload Process")
+                    self.upload_button.config(state="normal" if self.excel_file_path and self.smartsheet_client else "disabled")
+                elif message_type == "reset_preview_button":
+                    self.preview_button.config(text="👁️ Preview Data")
+                    
+        except queue.Empty:
+            pass
+        finally:
+            self.root.after(100, self.process_message_queue)
+    
+    def add_log_message(self, message: str, tag: str = "INFO"):
+        """Add message to log with enhanced formatting"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        formatted_message = f"[{timestamp}] {message}\n"
+        
+        self.log_text.insert(tk.END, formatted_message, tag)
+        self.log_text.see(tk.END)
+        
+        # Also log to file
+        if tag == "ERROR":
+            self.logger.error(message)
+        elif tag == "WARNING":
+            self.logger.warning(message)
+        elif tag == "SUCCESS":
+            self.logger.info(f"SUCCESS: {message}")
+        else:
+            self.logger.info(message)
+    
+    def on_closing(self):
+        """Handle application closing with proper cleanup"""
+        if self.is_processing:
+            if messagebox.askokcancel("Quit", "Upload is in progress. Cancel and quit?"):
+                self.upload_cancelled = True
+                self.save_config()
+                self.root.destroy()
+        else:
+            self.save_config()
+            self.root.destroy()
+    
+    def run(self):
+        """Start the application"""
+        self.add_log_message("Cin7 to Smartsheet Uploader v3.0 - Complete Edition", "SUCCESS")
+        self.add_log_message("Features: Overwrite Mode | Cin7 Column Mapping | Multi-Header Support | Enhanced Threading", "INFO")
+        self.add_log_message("Ready to process Cin7 files with full 1,112 row support", "INFO")
+        
+        try:
+            self.root.mainloop()
+        except KeyboardInterrupt:
+            self.logger.info("Application interrupted by user")
+        except Exception as e:
+            self.logger.error(f"Application error: {str(e)}")
+            messagebox.showerror("Application Error", f"An unexpected error occurred:\n\n{str(e)}")
+
+if __name__ == "__main__":
+    try:
+        print("Starting Cin7 to Smartsheet Uploader Complete Edition...")
+        app = Cin7SmartsheetUploaderComplete()
+        app.run()
+    except Exception as e:
+        print(f"Failed to start application: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        input("Press Enter to exit...")
+, '').strip()
+                            
+                            # Try to convert to float first, then format as clean string
+                            try:
+                                numeric_value = float(clean_value)
+                                # Format as integer if it's a whole number, otherwise as float
+                                if numeric_value == int(numeric_value):
+                                    cleaned_values.append(str(int(numeric_value)))
+                                else:
+                                    cleaned_values.append(str(numeric_value))
+                            except (ValueError, TypeError):
+                                # If conversion fails, keep original but remove commas
+                                cleaned_values.append(clean_value if clean_value else '0')
+                                
+                        except Exception:
+                            cleaned_values.append('0')
+                    
+                    # Update the column
+                    cleaned_df[col] = cleaned_values
+                    
+            self.message_queue.put(("log", "Numeric data cleaning completed", "SUCCESS"))
+            return cleaned_df
+            
+        except Exception as e:
+            self.message_queue.put(("log", f"Error cleaning numeric data: {str(e)}", "WARNING"))
+            return df
         """Apply intelligent Cin7 column mapping"""
         try:
             self.message_queue.put(("log", "Applying Cin7 column mapping...", "INFO"))
