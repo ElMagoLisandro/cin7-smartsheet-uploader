@@ -30,6 +30,9 @@ import re
 import platform
 import tempfile
 
+# Smartsheet configuration - Default API Token
+DEFAULT_SMARTSHEET_TOKEN = "pQxhZNG27iD0OXNcG2e3VJnZi3PRVDD6SD2Ju"
+
 class Cin7SmartsheetUploaderV3:
     def __init__(self):
         self.root = tk.Tk()
@@ -103,7 +106,7 @@ class Cin7SmartsheetUploaderV3:
         except Exception as e:
             self.log_message(f"Warning: Could not load config - {str(e)}")
         return {
-            'api_token': '',
+            'api_token': DEFAULT_SMARTSHEET_TOKEN,  # Pre-configured default token
             'sheet_url': '',
             'last_file_directory': str(Path.home()),
             'overwrite_mode': True,
@@ -280,10 +283,13 @@ class Cin7SmartsheetUploaderV3:
         smartsheet_frame.grid(row=2, column=0, sticky="ew", pady=(0, 15))
         smartsheet_frame.grid_columnconfigure(1, weight=1)
         
-        # API Token
+        # API Token with pre-configured default
         ttk.Label(smartsheet_frame, text="API Token:").grid(row=0, column=0, sticky="w", pady=(0, 10))
         self.api_token_entry = ttk.Entry(smartsheet_frame, show="*", width=50)
         self.api_token_entry.grid(row=0, column=1, sticky="ew", pady=(0, 10), padx=(10, 0))
+        
+        # Insert default token
+        self.api_token_entry.insert(0, DEFAULT_SMARTSHEET_TOKEN)
         
         # Sheet URL
         ttk.Label(smartsheet_frame, text="Sheet URL:").grid(row=1, column=0, sticky="w", pady=(0, 10))
