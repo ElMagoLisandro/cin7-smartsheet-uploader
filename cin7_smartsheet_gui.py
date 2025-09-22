@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 """
-Cin7 to Smartsheet Uploader v3.0 - Complete Enhanced Edition
-Integrates best features from both versions to fully satisfy Shamar's requirements:
-✅ TRUE overwrite mode (clears sheet first)
-✅ Multi-level header reading for Cin7 exports  
-✅ Specific column mapping for Cin7 structure
-✅ Enhanced UI responsiveness with proper threading
-✅ Persistent connection between sessions
-✅ Captures all 1,112 rows (no filtering issues)
+Cin7 to Smartsheet Uploader v3.0 - Complete Features, Windows Compatible
+Maintains ALL advanced features while avoiding TTK theme issues
 """
 
 import tkinter as tk
@@ -30,17 +24,17 @@ import re
 import platform
 import tempfile
 
-# Smartsheet configuration - Default API Token
+# Default configuration
 DEFAULT_SMARTSHEET_TOKEN = "pQxhZNG27iD0OXNcG2e3VJnZi3PRVDD6SD2Ju"
 
-class Cin7SmartsheetUploaderV3:
+class Cin7SmartsheetUploaderComplete:
     def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("Cin7 to Smartsheet Uploader v3.0 - Complete Enhanced Edition")
-        self.root.geometry("1000x900")
-        self.root.resizable(True, True)
+        print("Initializing Complete Cin7 Smartsheet Uploader...")
         
-        # Set minimum size for professional appearance
+        self.root = tk.Tk()
+        self.root.title("Cin7 to Smartsheet Uploader v3.0 - Complete Edition")
+        self.root.geometry("1000x800")
+        self.root.resizable(True, True)
         self.root.minsize(900, 700)
         
         # Configuration file for persistence
@@ -58,12 +52,12 @@ class Cin7SmartsheetUploaderV3:
         
         # Enhanced configuration parameters
         self.upload_config = {
-            'batch_size': 20,  # Optimal batch size for reliability
+            'batch_size': 20,
             'max_retries': 3,
-            'retry_delay': 2,  # seconds
-            'connection_timeout': 60,  # seconds
-            'read_timeout': 120,  # seconds
-            'rate_limit_delay': 0.5,  # seconds between batches
+            'retry_delay': 2,
+            'connection_timeout': 60,
+            'read_timeout': 120,
+            'rate_limit_delay': 0.5,
         }
         
         # Cin7-specific column mapping for dual-header structure
@@ -77,13 +71,13 @@ class Cin7SmartsheetUploaderV3:
             'Grand Total': ['grand total', '7 -', 'total', 'grand_total_stock qty']
         }
         
-        # Queue for thread-safe communication
+        # Queue for thread communication
         self.message_queue = queue.Queue()
         
         # Setup comprehensive logging
         self.setup_logging()
         
-        # Create professional UI with tabs
+        # Create UI without problematic TTK styles
         self.create_ui()
         
         # Load saved configuration
@@ -94,6 +88,8 @@ class Cin7SmartsheetUploaderV3:
         
         # Setup graceful shutdown
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        print("Complete initialization finished successfully!")
     
     def load_config(self) -> Dict[str, Any]:
         """Load configuration from file with error handling"""
@@ -101,24 +97,24 @@ class Cin7SmartsheetUploaderV3:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
-                    self.log_message("Configuration loaded successfully")
+                    print("Configuration loaded successfully")
                     return config
         except Exception as e:
-            self.log_message(f"Warning: Could not load config - {str(e)}")
+            print(f"Warning: Could not load config - {str(e)}")
+        
         return {
-            'api_token': DEFAULT_SMARTSHEET_TOKEN,  # Pre-configured default token
+            'api_token': DEFAULT_SMARTSHEET_TOKEN,
             'sheet_url': '',
             'last_file_directory': str(Path.home()),
             'overwrite_mode': True,
             'verbatim_copy': True,
             'column_mapping': True,
-            'window_geometry': '1000x900'
+            'window_geometry': '1000x800'
         }
     
     def save_config(self):
         """Save configuration to file with error handling"""
         try:
-            # Update current settings
             self.config['api_token'] = self.api_token_entry.get()
             self.config['sheet_url'] = self.sheet_url_entry.get()
             self.config['overwrite_mode'] = self.overwrite_var.get()
@@ -128,13 +124,13 @@ class Cin7SmartsheetUploaderV3:
             
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
-            self.log_message("Configuration saved successfully")
+            print("Configuration saved successfully")
         except Exception as e:
-            self.log_message(f"Warning: Could not save config - {str(e)}")
+            print(f"Warning: Could not save config - {str(e)}")
     
     def setup_logging(self):
         """Setup comprehensive logging system"""
-        # Create logs directory if it doesn't exist
+        # Create logs directory
         log_dir = Path("logs")
         log_dir.mkdir(exist_ok=True)
         
@@ -151,27 +147,15 @@ class Cin7SmartsheetUploaderV3:
         )
         
         self.logger = logging.getLogger(__name__)
-        self.logger.info("=== Cin7 to Smartsheet Uploader v3.0 Complete Enhanced Edition Started ===")
+        self.logger.info("=== Cin7 to Smartsheet Uploader v3.0 Complete Edition Started ===")
         self.logger.info(f"Platform: {platform.system()} {platform.release()}")
         self.logger.info(f"Python: {sys.version}")
     
     def create_ui(self):
-        """Create professional user interface with tabs"""
-        # Configure styles
-        style = ttk.Style()
+        """Create complete user interface without TTK style issues"""
+        print("Creating complete user interface...")
         
-        # Try to use modern theme
-        try:
-            if platform.system() == "Darwin":  # macOS
-                style.theme_use('aqua')
-            elif platform.system() == "Windows":
-                style.theme_use('vista')
-            else:
-                style.theme_use('clam')
-        except:
-            style.theme_use('default')
-        
-        # Create notebook for tabbed interface
+        # Create notebook for tabbed interface (using ttk.Notebook is safe, it's the Style() that causes issues)
         self.notebook = ttk.Notebook(self.root, padding="10")
         self.notebook.pack(fill='both', expand=True)
         
@@ -188,177 +172,108 @@ class Cin7SmartsheetUploaderV3:
         
         # Create settings tab content
         self.create_settings_tab()
+        
+        print("Complete user interface created successfully!")
     
     def create_main_tab(self):
-        """Create main upload tab with enhanced UI"""
+        """Create main upload tab with all features"""
         # Configure grid weights
-        self.main_tab.grid_rowconfigure(5, weight=1)  # Log area expandable
+        self.main_tab.grid_rowconfigure(5, weight=1)
         self.main_tab.grid_columnconfigure(0, weight=1)
         
         # Header section
-        self.create_header_section(self.main_tab)
-        
-        # Step 1: File Selection
-        self.create_file_section(self.main_tab)
-        
-        # Step 2: Smartsheet Configuration  
-        self.create_smartsheet_section(self.main_tab)
-        
-        # Step 3: Upload Configuration
-        self.create_upload_config_section(self.main_tab)
-        
-        # Step 4: Upload Process
-        self.create_upload_process_section(self.main_tab)
-        
-        # Step 5: Progress and Logging
-        self.create_log_section(self.main_tab)
-    
-    def create_header_section(self, parent):
-        """Create header section with version info"""
-        header_frame = ttk.Frame(parent)
+        header_frame = ttk.Frame(self.main_tab)
         header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 25))
         header_frame.grid_columnconfigure(0, weight=1)
         
-        # Title
-        title_label = ttk.Label(
-            header_frame, 
-            text="Cin7 to Smartsheet Uploader v3.0", 
-            font=("SF Pro Display" if platform.system() == "Darwin" else "Segoe UI", 18, "bold")
-        )
+        title_label = ttk.Label(header_frame, text="Cin7 to Smartsheet Uploader v3.0", 
+                               font=("Arial", 18, "bold"))
         title_label.grid(row=0, column=0)
         
-        # Enhanced description
-        desc_label = ttk.Label(
-            header_frame,
-            text="Complete Enhanced Edition - Overwrite Mode | Column Mapping | Multi-Header Support",
-            font=("SF Pro Display" if platform.system() == "Darwin" else "Segoe UI", 10)
-        )
+        desc_label = ttk.Label(header_frame, 
+                              text="Complete Edition - Overwrite Mode | Column Mapping | Multi-Header Support",
+                              font=("Arial", 10))
         desc_label.grid(row=1, column=0, pady=(5, 0))
         
-        # Status indicator
-        self.connection_indicator = ttk.Label(
-            header_frame,
-            text="● Not Connected",
-            foreground="red",
-            font=("SF Pro Display" if platform.system() == "Darwin" else "Segoe UI", 9)
-        )
+        self.connection_indicator = ttk.Label(header_frame, text="● Not Connected", 
+                                             foreground="red", font=("Arial", 9))
         self.connection_indicator.grid(row=2, column=0, pady=(5, 0))
-    
-    def create_file_section(self, parent):
-        """Create file selection section"""
-        file_frame = ttk.LabelFrame(parent, text=" Step 1: Select Cin7 Excel Export ", padding=15)
+        
+        # Step 1: File Selection
+        file_frame = ttk.LabelFrame(self.main_tab, text=" Step 1: Select Cin7 Excel Export ", padding=15)
         file_frame.grid(row=1, column=0, sticky="ew", pady=(0, 15))
         file_frame.grid_columnconfigure(1, weight=1)
         
-        # File path display
         self.file_path_var = tk.StringVar(value="No file selected")
         file_path_label = ttk.Label(file_frame, textvariable=self.file_path_var, 
                                    foreground="gray", wraplength=600)
         file_path_label.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
         
-        # Browse button with enhanced responsiveness
-        self.browse_button = ttk.Button(
-            file_frame, 
-            text="📁 Browse Excel File", 
-            command=self.browse_file_immediate_response
-        )
+        self.browse_button = ttk.Button(file_frame, text="📁 Browse Excel File", 
+                                       command=self.browse_file_immediate_response)
         self.browse_button.grid(row=1, column=0, sticky="w")
         
-        # File info
         self.file_info_label = ttk.Label(file_frame, text="", foreground="blue")
         self.file_info_label.grid(row=1, column=1, sticky="w", padx=(20, 0))
         
-        # Analyze button
-        self.analyze_button = ttk.Button(
-            file_frame,
-            text="🔍 Analyze Structure",
-            command=self.analyze_file_immediate_response,
-            state="disabled"
-        )
+        self.analyze_button = ttk.Button(file_frame, text="🔍 Analyze Structure", 
+                                        command=self.analyze_file_immediate_response, state="disabled")
         self.analyze_button.grid(row=1, column=2, sticky="e")
-    
-    def create_smartsheet_section(self, parent):
-        """Create Smartsheet configuration section"""
-        smartsheet_frame = ttk.LabelFrame(parent, text=" Step 2: Smartsheet Configuration ", padding=15)
+        
+        # Step 2: Smartsheet Configuration
+        smartsheet_frame = ttk.LabelFrame(self.main_tab, text=" Step 2: Smartsheet Configuration ", padding=15)
         smartsheet_frame.grid(row=2, column=0, sticky="ew", pady=(0, 15))
         smartsheet_frame.grid_columnconfigure(1, weight=1)
         
-        # API Token with pre-configured default
         ttk.Label(smartsheet_frame, text="API Token:").grid(row=0, column=0, sticky="w", pady=(0, 10))
         self.api_token_entry = ttk.Entry(smartsheet_frame, show="*", width=50)
         self.api_token_entry.grid(row=0, column=1, sticky="ew", pady=(0, 10), padx=(10, 0))
         
-        # Insert default token
-        self.api_token_entry.insert(0, DEFAULT_SMARTSHEET_TOKEN)
-        
-        # Sheet URL
         ttk.Label(smartsheet_frame, text="Sheet URL:").grid(row=1, column=0, sticky="w", pady=(0, 10))
         self.sheet_url_entry = ttk.Entry(smartsheet_frame, width=50)
         self.sheet_url_entry.grid(row=1, column=1, sticky="ew", pady=(0, 10), padx=(10, 0))
         
-        # Connection controls
         connection_frame = ttk.Frame(smartsheet_frame)
         connection_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         connection_frame.grid_columnconfigure(2, weight=1)
         
-        self.connect_button = ttk.Button(
-            connection_frame,
-            text="🔗 Connect",
-            command=self.connect_smartsheet_immediate_response
-        )
+        self.connect_button = ttk.Button(connection_frame, text="🔗 Connect", 
+                                        command=self.connect_smartsheet_immediate_response)
         self.connect_button.grid(row=0, column=0, sticky="w")
         
-        self.test_connection_button = ttk.Button(
-            connection_frame,
-            text="🧪 Test",
-            command=self.test_connection_immediate_response,
-            state="disabled"
-        )
+        self.test_connection_button = ttk.Button(connection_frame, text="🧪 Test", 
+                                                command=self.test_connection_immediate_response, state="disabled")
         self.test_connection_button.grid(row=0, column=1, sticky="w", padx=(10, 0))
         
         self.connection_status_var = tk.StringVar(value="Not connected")
-        self.connection_status_label = ttk.Label(
-            connection_frame, 
-            textvariable=self.connection_status_var,
-            foreground="red"
-        )
+        self.connection_status_label = ttk.Label(connection_frame, textvariable=self.connection_status_var, 
+                                                foreground="red")
         self.connection_status_label.grid(row=0, column=2, sticky="w", padx=(20, 0))
-    
-    def create_upload_config_section(self, parent):
-        """Create upload configuration section"""
-        config_frame = ttk.LabelFrame(parent, text=" Step 3: Upload Configuration ", padding=15)
+        
+        # Step 3: Upload Configuration
+        config_frame = ttk.LabelFrame(self.main_tab, text=" Step 3: Upload Configuration ", padding=15)
         config_frame.grid(row=3, column=0, sticky="ew", pady=(0, 15))
         config_frame.grid_columnconfigure(0, weight=1)
         
-        # Main options
         options_frame = ttk.Frame(config_frame)
         options_frame.grid(row=0, column=0, sticky="ew", pady=(0, 15))
         
-        # Overwrite mode (CRITICAL for Shamar's requirement)
         self.overwrite_var = tk.BooleanVar(value=True)
-        overwrite_cb = ttk.Checkbutton(
-            options_frame,
-            text="🔄 Overwrite existing data (clears sheet first - RECOMMENDED)",
-            variable=self.overwrite_var
-        )
+        overwrite_cb = ttk.Checkbutton(options_frame, 
+                                      text="🔄 Overwrite existing data (clears sheet first - RECOMMENDED)", 
+                                      variable=self.overwrite_var)
         overwrite_cb.grid(row=0, column=0, sticky="w")
         
-        # Verbatim copy for all 1,112 rows
         self.verbatim_var = tk.BooleanVar(value=True)
-        verbatim_cb = ttk.Checkbutton(
-            options_frame,
-            text="📋 Copy all rows verbatim (captures all 1,112 rows)",
-            variable=self.verbatim_var
-        )
+        verbatim_cb = ttk.Checkbutton(options_frame, 
+                                     text="📋 Copy all rows verbatim (captures all 1,112 rows)", 
+                                     variable=self.verbatim_var)
         verbatim_cb.grid(row=1, column=0, sticky="w", pady=(5, 0))
         
-        # Cin7 column mapping
         self.column_mapping_var = tk.BooleanVar(value=True)
-        mapping_cb = ttk.Checkbutton(
-            options_frame,
-            text="🗂️ Apply Cin7 intelligent column mapping",
-            variable=self.column_mapping_var
-        )
+        mapping_cb = ttk.Checkbutton(options_frame, 
+                                    text="🗂️ Apply Cin7 intelligent column mapping", 
+                                    variable=self.column_mapping_var)
         mapping_cb.grid(row=2, column=0, sticky="w", pady=(5, 0))
         
         # Advanced settings
@@ -366,49 +281,31 @@ class Cin7SmartsheetUploaderV3:
         advanced_frame.grid(row=1, column=0, sticky="ew")
         advanced_frame.grid_columnconfigure(1, weight=1)
         
-        # Batch size
         ttk.Label(advanced_frame, text="Batch Size:").grid(row=0, column=0, sticky="w")
         self.batch_size_var = tk.IntVar(value=20)
         batch_spinbox = ttk.Spinbox(advanced_frame, from_=10, to=50, width=10, textvariable=self.batch_size_var)
         batch_spinbox.grid(row=0, column=1, sticky="w", padx=(10, 0))
         
-        # Max retries
         ttk.Label(advanced_frame, text="Max Retries:").grid(row=0, column=2, sticky="w", padx=(20, 0))
         self.max_retries_var = tk.IntVar(value=3)
         retries_spinbox = ttk.Spinbox(advanced_frame, from_=1, to=5, width=10, textvariable=self.max_retries_var)
         retries_spinbox.grid(row=0, column=3, sticky="w", padx=(10, 0))
-    
-    def create_upload_process_section(self, parent):
-        """Create upload process section"""
-        process_frame = ttk.LabelFrame(parent, text=" Step 4: Upload Process ", padding=15)
+        
+        # Step 4: Upload Process
+        process_frame = ttk.LabelFrame(self.main_tab, text=" Step 4: Upload Process ", padding=15)
         process_frame.grid(row=4, column=0, sticky="ew", pady=(0, 15))
         process_frame.grid_columnconfigure(1, weight=1)
         
-        # Main upload button
-        self.upload_button = ttk.Button(
-            process_frame,
-            text="🚀 Start Complete Upload Process",
-            command=self.start_upload_immediate_response,
-            style="Accent.TButton"
-        )
+        self.upload_button = ttk.Button(process_frame, text="🚀 Start Complete Upload Process", 
+                                       command=self.start_upload_immediate_response)
         self.upload_button.grid(row=0, column=0, sticky="w")
         
-        # Cancel button
-        self.cancel_button = ttk.Button(
-            process_frame,
-            text="⏹️ Cancel Upload",
-            command=self.cancel_upload_immediate_response,
-            state="disabled"
-        )
+        self.cancel_button = ttk.Button(process_frame, text="⏹️ Cancel Upload", 
+                                       command=self.cancel_upload_immediate_response, state="disabled")
         self.cancel_button.grid(row=0, column=1, sticky="w", padx=(20, 0))
         
-        # Preview button
-        self.preview_button = ttk.Button(
-            process_frame,
-            text="👁️ Preview Data",
-            command=self.preview_data_immediate_response,
-            state="disabled"
-        )
+        self.preview_button = ttk.Button(process_frame, text="👁️ Preview Data", 
+                                        command=self.preview_data_immediate_response, state="disabled")
         self.preview_button.grid(row=0, column=2, sticky="e")
         
         # Progress section
@@ -422,15 +319,13 @@ class Cin7SmartsheetUploaderV3:
         
         self.progress_bar = ttk.Progressbar(progress_section, mode='determinate')
         self.progress_bar.grid(row=1, column=0, sticky="ew")
-    
-    def create_log_section(self, parent):
-        """Create enhanced logging section"""
-        log_frame = ttk.LabelFrame(parent, text=" Activity Log & Progress ", padding=15)
+        
+        # Step 5: Activity Log
+        log_frame = ttk.LabelFrame(self.main_tab, text=" Activity Log & Progress ", padding=15)
         log_frame.grid(row=5, column=0, sticky="nsew")
         log_frame.grid_columnconfigure(0, weight=1)
         log_frame.grid_rowconfigure(1, weight=1)
         
-        # Log controls
         log_controls = ttk.Frame(log_frame)
         log_controls.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         log_controls.grid_columnconfigure(1, weight=1)
@@ -443,22 +338,15 @@ class Cin7SmartsheetUploaderV3:
         clear_log_button = ttk.Button(log_controls, text="🗑️ Clear", command=self.clear_log)
         clear_log_button.grid(row=0, column=2, sticky="e", padx=(10, 0))
         
-        # Enhanced log display
-        self.log_text = scrolledtext.ScrolledText(
-            log_frame,
-            height=15,
-            wrap=tk.WORD,
-            font=("Monaco" if platform.system() == "Darwin" else "Consolas", 9),
-            bg='#f8f9fa',
-            fg='#2c3e50'
-        )
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=15, wrap=tk.WORD, 
+                                                 font=("Consolas", 9), bg='#f8f9fa', fg='#2c3e50')
         self.log_text.grid(row=1, column=0, sticky="nsew")
         
         # Configure log text tags for colored output
         self.log_text.tag_configure("INFO", foreground="black")
-        self.log_text.tag_configure("SUCCESS", foreground="green", font=("Monaco" if platform.system() == "Darwin" else "Consolas", 9, "bold"))
+        self.log_text.tag_configure("SUCCESS", foreground="green", font=("Consolas", 9, "bold"))
         self.log_text.tag_configure("WARNING", foreground="orange")
-        self.log_text.tag_configure("ERROR", foreground="red", font=("Monaco" if platform.system() == "Darwin" else "Consolas", 9, "bold"))
+        self.log_text.tag_configure("ERROR", foreground="red", font=("Consolas", 9, "bold"))
         self.log_text.tag_configure("DEBUG", foreground="gray")
     
     def create_settings_tab(self):
@@ -471,16 +359,15 @@ class Cin7SmartsheetUploaderV3:
         persist_section.pack(fill='x', pady=(0, 20))
         
         ttk.Label(persist_section, text="Configuration is automatically saved between sessions.", 
-                 font=("SF Pro Display" if platform.system() == "Darwin" else "Segoe UI", 10)).pack(anchor='w')
+                 font=("Arial", 10)).pack(anchor='w')
         ttk.Label(persist_section, text="API tokens and sheet URLs are remembered.", 
-                 font=("SF Pro Display" if platform.system() == "Darwin" else "Segoe UI", 9)).pack(anchor='w', pady=(5, 0))
+                 font=("Arial", 9)).pack(anchor='w', pady=(5, 0))
         
         # Current configuration display
         config_section = ttk.LabelFrame(settings_frame, text="Current Configuration", padding=15)
         config_section.pack(fill='x', pady=(0, 20))
         
-        self.config_display = ttk.Label(config_section, text="", 
-                                       font=("Monaco" if platform.system() == "Darwin" else "Consolas", 9))
+        self.config_display = ttk.Label(config_section, text="", font=("Consolas", 9))
         self.config_display.pack(anchor='w')
         
         # Update config display
@@ -492,12 +379,11 @@ class Cin7SmartsheetUploaderV3:
         
         system_info = f"""Platform: {platform.system()} {platform.release()}
 Python: {platform.python_version()}
-Application: v3.0 Complete Enhanced Edition
+Application: v3.0 Complete Edition
 Config File: {self.config_file}
 Logs Directory: logs/"""
         
-        ttk.Label(system_section, text=system_info, 
-                 font=("Monaco" if platform.system() == "Darwin" else "Consolas", 9)).pack(anchor='w')
+        ttk.Label(system_section, text=system_info, font=("Consolas", 9)).pack(anchor='w')
     
     def update_config_display(self):
         """Update configuration display"""
@@ -516,8 +402,8 @@ Logs Directory: logs/"""
     def browse_file_immediate_response(self):
         """Immediate UI response for file browsing"""
         self.browse_button.config(text="📁 Browsing...")
-        self.root.update_idletasks()  # Force UI update
-        self.root.after(10, self.browse_file_threaded)  # Start actual work after UI update
+        self.root.update_idletasks()
+        self.root.after(10, self.browse_file_threaded)
     
     def analyze_file_immediate_response(self):
         """Immediate UI response for file analysis"""
@@ -557,7 +443,7 @@ Logs Directory: logs/"""
         self.root.update_idletasks()
         self.root.after(10, self.preview_data_threaded)
     
-    # Core processing methods with enhanced threading
+    # Core processing methods with enhanced threading and error handling
     def browse_file_threaded(self):
         """Thread-safe file browsing with enhanced Cin7 support"""
         def browse_file():
@@ -610,10 +496,8 @@ Logs Directory: logs/"""
                     df = pd.read_csv(self.excel_file_path, encoding='utf-8')
                     df_multi = None
                 else:
-                    # Try multi-level header first (Cin7 standard)
                     try:
                         df_multi = pd.read_excel(self.excel_file_path, engine='openpyxl', header=[0, 1])
-                        # Also read single header for comparison
                         df = pd.read_excel(self.excel_file_path, engine='openpyxl')
                         self.message_queue.put(("log", "Detected Cin7 dual-header structure", "SUCCESS"))
                     except:
@@ -621,7 +505,6 @@ Logs Directory: logs/"""
                         df_multi = None
                         self.message_queue.put(("log", "Using single-header structure", "INFO"))
                 
-                # Analyze structure
                 rows, cols = df.shape
                 
                 self.message_queue.put(("log", f"File analysis complete:", "SUCCESS"))
@@ -639,7 +522,7 @@ Logs Directory: logs/"""
                 
                 if cin7_indicators:
                     self.message_queue.put(("log", f"  - Cin7 columns detected: {len(cin7_indicators)}", "SUCCESS"))
-                    for col in cin7_indicators[:5]:  # Show first 5
+                    for col in cin7_indicators[:5]:
                         self.message_queue.put(("log", f"    * {col}", "INFO"))
                     if len(cin7_indicators) > 5:
                         self.message_queue.put(("log", f"    ... and {len(cin7_indicators) - 5} more", "INFO"))
@@ -697,7 +580,7 @@ Logs Directory: logs/"""
                         self.upload_config['read_timeout']
                     )
                 except:
-                    pass  # Fallback if timeout setting fails
+                    pass
                 
                 # Extract sheet ID with enhanced patterns
                 sheet_id = self.extract_sheet_id_enhanced(sheet_url)
@@ -741,7 +624,6 @@ Logs Directory: logs/"""
             try:
                 self.message_queue.put(("log", "Testing Smartsheet connection...", "INFO"))
                 
-                # Test basic connection
                 sheet_info = self.smartsheet_client.Sheets.get_sheet(self.smartsheet_sheet.id)
                 
                 self.message_queue.put(("log", "Connection test successful:", "SUCCESS"))
@@ -749,7 +631,6 @@ Logs Directory: logs/"""
                 self.message_queue.put(("log", f"  - Columns: {len(sheet_info.columns)}", "INFO"))
                 self.message_queue.put(("log", f"  - Current rows: {sheet_info.total_row_count}", "INFO"))
                 
-                # Test permissions by trying to get sheet details
                 try:
                     detailed_sheet = self.smartsheet_client.Sheets.get_sheet(
                         self.smartsheet_sheet.id, 
@@ -809,7 +690,7 @@ Logs Directory: logs/"""
                 self.root.after(0, lambda: self.show_enhanced_confirmation_dialog(processed_df))
                 
                 # Wait for confirmation result
-                confirmation_timeout = 30  # 30 seconds timeout
+                confirmation_timeout = 30
                 wait_time = 0
                 while self.confirmation_result is None and wait_time < confirmation_timeout:
                     time.sleep(0.1)
@@ -821,7 +702,6 @@ Logs Directory: logs/"""
                     self.message_queue.put(("log", "Upload cancelled by user", "WARNING"))
                     return
                 
-                # Reset confirmation result
                 self.confirmation_result = None
                 
                 # Step 3: Clear existing data if overwrite mode
@@ -837,7 +717,6 @@ Logs Directory: logs/"""
                     self.message_queue.put(("log", "=== Upload Completed Successfully ===", "SUCCESS"))
                     self.message_queue.put(("progress_update", f"Complete! {total_rows} rows uploaded", 100))
                     
-                    # Show success message
                     self.root.after(0, lambda: messagebox.showinfo("Success", 
                                       f"Upload completed successfully!\n\n"
                                       f"Rows uploaded: {total_rows:,}\n"
@@ -867,7 +746,6 @@ Logs Directory: logs/"""
                 df = self.file_analysis['df']
                 df_multi = self.file_analysis.get('df_multi')
             else:
-                # Read fresh if analysis not available
                 if Path(self.excel_file_path).suffix.lower() == '.csv':
                     df = pd.read_csv(self.excel_file_path, encoding='utf-8')
                     df_multi = None
@@ -881,7 +759,6 @@ Logs Directory: logs/"""
             
             # Choose best DataFrame based on verbatim setting
             if self.verbatim_var.get():
-                # Use multi-header if available, otherwise single
                 working_df = df_multi if df_multi is not None else df
                 self.message_queue.put(("log", "Using verbatim mode - preserving all data structure", "INFO"))
             else:
@@ -890,7 +767,6 @@ Logs Directory: logs/"""
             
             # Handle multi-level columns if present
             if isinstance(working_df.columns, pd.MultiIndex):
-                # Combine the two header levels for better matching
                 new_columns = []
                 for col in working_df.columns:
                     if col[0] and col[1] and str(col[0]).strip() != str(col[1]).strip():
@@ -923,7 +799,6 @@ Logs Directory: logs/"""
                         break
                 
                 if product_code_col:
-                    # Remove invalid rows
                     working_df = working_df[
                         (working_df[product_code_col] != '') & 
                         (working_df[product_code_col] != 'nan') &
@@ -1015,11 +890,7 @@ Do you want to proceed with the upload?
 ⚠️ This operation cannot be undone."""
             
             # Show dialog and store result
-            result = messagebox.askyesno(
-                "Confirm Upload", 
-                message,
-                parent=self.root
-            )
+            result = messagebox.askyesno("Confirm Upload", message, parent=self.root)
             
             self.confirmation_result = result
             
@@ -1057,7 +928,7 @@ Do you want to proceed with the upload?
             
             # Delete rows in batches
             row_ids = [row.id for row in sheet.rows]
-            batch_size = 400  # Smartsheet limit
+            batch_size = 400
             total_batches = (len(row_ids) + batch_size - 1) // batch_size
             
             self.message_queue.put(("log", f"Clearing {len(row_ids)} rows in {total_batches} batches", "INFO"))
@@ -1073,10 +944,7 @@ Do you want to proceed with the upload?
                 # Delete with retry logic
                 for attempt in range(self.upload_config['max_retries']):
                     try:
-                        self.smartsheet_client.Sheets.delete_rows(
-                            self.smartsheet_sheet.id, 
-                            batch_ids
-                        )
+                        self.smartsheet_client.Sheets.delete_rows(self.smartsheet_sheet.id, batch_ids)
                         break
                     except Exception as e:
                         if attempt == self.upload_config['max_retries'] - 1:
@@ -1086,7 +954,6 @@ Do you want to proceed with the upload?
                 
                 self.message_queue.put(("log", f"Cleared batch {batch_num + 1}/{total_batches}: {len(batch_ids)} rows", "INFO"))
                 
-                # Rate limiting
                 if batch_num < total_batches - 1:
                     time.sleep(self.upload_config['rate_limit_delay'])
             
@@ -1131,7 +998,7 @@ Do you want to proceed with the upload?
                             cell.value = str(value).strip()
                             new_row.cells.append(cell)
                     
-                    if new_row.cells:  # Only add rows with data
+                    if new_row.cells:
                         rows_to_add.append(new_row)
                 
                 # Upload batch with retry logic
@@ -1141,11 +1008,7 @@ Do you want to proceed with the upload?
                         if self.upload_cancelled:
                             return False
                         
-                        response = self.smartsheet_client.Sheets.add_rows(
-                            self.smartsheet_sheet.id, 
-                            rows_to_add
-                        )
-                        
+                        response = self.smartsheet_client.Sheets.add_rows(self.smartsheet_sheet.id, rows_to_add)
                         success = True
                         break
                         
@@ -1167,12 +1030,11 @@ Do you want to proceed with the upload?
                     return False
                 
                 uploaded_rows += len(rows_to_add)
-                progress_pct = 40 + (uploaded_rows / total_rows) * 50  # 40-90% for upload
+                progress_pct = 40 + (uploaded_rows / total_rows) * 50
                 
                 self.message_queue.put(("log", f"Batch {batch_num + 1}/{total_batches}: {len(rows_to_add)} rows uploaded (Total: {uploaded_rows:,}, {(uploaded_rows/total_rows)*100:.1f}%)", "SUCCESS"))
                 self.message_queue.put(("progress_update", f"Uploading: {uploaded_rows:,}/{total_rows:,} rows", progress_pct))
                 
-                # Rate limiting between batches
                 if batch_num < total_batches - 1:
                     time.sleep(self.upload_config['rate_limit_delay'])
             
@@ -1183,7 +1045,7 @@ Do you want to proceed with the upload?
             return False
     
     def preview_data_threaded(self):
-        """Enhanced data preview"""
+        """Enhanced data preview with TreeView window"""
         if not self.excel_file_path:
             messagebox.showwarning("No File", "Please select an Excel file first")
             self.message_queue.put(("reset_preview_button", None, None))
@@ -1206,7 +1068,7 @@ Do you want to proceed with the upload?
         threading.Thread(target=preview_data, daemon=True).start()
     
     def show_preview_window(self, df: pd.DataFrame):
-        """Enhanced preview window"""
+        """Enhanced preview window with TreeView"""
         preview_window = tk.Toplevel(self.root)
         preview_window.title("Data Preview - Cin7 to Smartsheet")
         preview_window.geometry("1000x700")
@@ -1222,9 +1084,9 @@ Do you want to proceed with the upload?
         info_frame.pack(fill=tk.X, pady=(0, 10))
         
         ttk.Label(info_frame, text=f"Preview: First 100 rows of {len(df)} total rows", 
-                 font=("SF Pro Display" if platform.system() == "Darwin" else "Segoe UI", 12, "bold")).pack(anchor=tk.W)
+                 font=("Arial", 12, "bold")).pack(anchor=tk.W)
         ttk.Label(info_frame, text=f"Columns: {', '.join(df.columns)}", 
-                 font=("SF Pro Display" if platform.system() == "Darwin" else "Segoe UI", 9)).pack(anchor=tk.W, pady=(5, 0))
+                 font=("Arial", 9)).pack(anchor=tk.W, pady=(5, 0))
         
         # Treeview with scrollbars
         tree_frame = ttk.Frame(main_frame)
@@ -1248,7 +1110,7 @@ Do you want to proceed with the upload?
         # Add data (first 100 rows)
         preview_df = df.head(100)
         for idx, row in preview_df.iterrows():
-            values = [str(row[col])[:50] for col in display_columns]  # Truncate long values
+            values = [str(row[col])[:50] for col in display_columns]
             tree.insert('', 'end', text=str(idx + 1), values=values)
         
         # Scrollbars
@@ -1271,34 +1133,24 @@ Do you want to proceed with the upload?
         
         if len(df.columns) > 8:
             ttk.Label(button_frame, text=f"Showing first 8 of {len(df.columns)} columns", 
-                     font=("SF Pro Display" if platform.system() == "Darwin" else "Segoe UI", 9)).pack(side=tk.LEFT)
+                     font=("Arial", 9)).pack(side=tk.LEFT)
     
     def extract_sheet_id_enhanced(self, url: str) -> Optional[str]:
         """Enhanced sheet ID extraction"""
         try:
-            # Standard sheet URL
             if '/sheets/' in url:
                 return url.split('/sheets/')[1].split('?')[0].split('/')[0]
-            
-            # Published sheet URL
             elif '/b/publish?EQBCT=' in url:
                 return url.split('EQBCT=')[1].split('&')[0]
-            
-            # Other formats
             else:
-                # Look for 19-digit number (Smartsheet ID format)
                 match = re.search(r'\d{19}', url)
                 if match:
                     return match.group()
-                
-                # Look for any long number sequence
                 match = re.search(r'\d{10,}', url)
                 if match:
                     return match.group()
-            
         except Exception as e:
             self.message_queue.put(("log", f"Error extracting sheet ID: {str(e)}", "ERROR"))
-        
         return None
     
     def cancel_upload(self):
@@ -1316,12 +1168,24 @@ Do you want to proceed with the upload?
         self.add_log_message("Log cleared", "INFO")
     
     def load_saved_config(self):
-        """Load saved configuration into UI"""
+        """Load saved configuration into UI with default token"""
         try:
-            if self.config.get('api_token'):
-                self.api_token_entry.insert(0, self.config['api_token'])
+            # Load API token (use saved or default)
+            api_token = self.config.get('api_token', DEFAULT_SMARTSHEET_TOKEN)
             
+            # Clear and insert API token
+            self.api_token_entry.delete(0, tk.END)
+            if api_token:
+                self.api_token_entry.insert(0, api_token)
+                print(f"Token loaded: {len(api_token)} characters")
+            else:
+                # Fallback - insert default token
+                self.api_token_entry.insert(0, DEFAULT_SMARTSHEET_TOKEN)
+                print(f"Using default token: {len(DEFAULT_SMARTSHEET_TOKEN)} characters")
+            
+            # Load sheet URL
             if self.config.get('sheet_url'):
+                self.sheet_url_entry.delete(0, tk.END)
                 self.sheet_url_entry.insert(0, self.config['sheet_url'])
             
             if self.config.get('window_geometry'):
@@ -1333,11 +1197,19 @@ Do you want to proceed with the upload?
             self.column_mapping_var.set(self.config.get('column_mapping', True))
             
             # Auto-connect if credentials are available
-            if self.config.get('api_token') and self.config.get('sheet_url'):
+            if api_token and self.config.get('sheet_url'):
+                self.add_log_message("Auto-connecting with saved credentials...", "INFO")
                 self.root.after(1000, self.connect_smartsheet_immediate_response)
                 
         except Exception as e:
             self.add_log_message(f"Error loading saved config: {str(e)}")
+            # Emergency fallback - ensure token is there
+            try:
+                self.api_token_entry.delete(0, tk.END)
+                self.api_token_entry.insert(0, DEFAULT_SMARTSHEET_TOKEN)
+                print("Emergency token fallback applied")
+            except:
+                pass
     
     def process_message_queue(self):
         """Process messages from background threads"""
@@ -1425,10 +1297,6 @@ Do you want to proceed with the upload?
         else:
             self.logger.info(message)
     
-    def log_message(self, message: str):
-        """Backwards compatibility method"""
-        self.add_log_message(message, "INFO")
-    
     def on_closing(self):
         """Handle application closing with proper cleanup"""
         if self.is_processing:
@@ -1442,7 +1310,7 @@ Do you want to proceed with the upload?
     
     def run(self):
         """Start the application"""
-        self.add_log_message("Cin7 to Smartsheet Uploader v3.0 - Complete Enhanced Edition", "SUCCESS")
+        self.add_log_message("Cin7 to Smartsheet Uploader v3.0 - Complete Edition", "SUCCESS")
         self.add_log_message("Features: Overwrite Mode | Cin7 Column Mapping | Multi-Header Support | Enhanced Threading", "INFO")
         self.add_log_message("Ready to process Cin7 files with full 1,112 row support", "INFO")
         
@@ -1456,8 +1324,10 @@ Do you want to proceed with the upload?
 
 if __name__ == "__main__":
     try:
-        app = Cin7SmartsheetUploaderV3()
+        print("Starting Cin7 to Smartsheet Uploader Complete Edition...")
+        app = Cin7SmartsheetUploaderComplete()
         app.run()
     except Exception as e:
         print(f"Failed to start application: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
         input("Press Enter to exit...")
