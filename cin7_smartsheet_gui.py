@@ -1,11 +1,4 @@
-# Extract sheet ID with enhanced patterns
-                sheet_id = self.extract_sheet_id_enhanced(sheet_url)
-                if not sheet_id:
-                    self.message_queue.put(("log", "Error: Could not extract sheet ID from URL", "ERROR"))
-                    self.message_queue.put(("connection_failed", None, None))
-                    return
-                
-                # Test connection and get sheet
+# Test connection and get sheet
                 self.message_queue.put(("log", f"Connecting to sheet ID: {sheet_id}", "INFO"))
                 self.smartsheet_sheet = self.smartsheet_client.Sheets.get_sheet(sheet_id)
                 
@@ -203,7 +196,7 @@
             if self.column_mapping_var.get():
                 working_df = self.apply_cin7_column_mapping(working_df)
             
-            # Clean numeric data to remove commas and ensure proper number format for Smartsheet - FIXED
+            # Clean numeric data to remove commas - COMPLETE FIXED VERSION
             working_df = self.clean_numeric_data_complete_fixed(working_df)
             
             # Remove invalid rows if not in verbatim mode
@@ -425,17 +418,17 @@ class Cin7SmartsheetUploaderCompleteFinal:
         """Create complete user interface without TTK style issues"""
         print("Creating complete user interface...")
         
-        # Create notebook for tabbed interface (using ttk.Notebook is safe, it's the Style() that causes issues)
+        # Create notebook for tabbed interface
         self.notebook = ttk.Notebook(self.root, padding="10")
         self.notebook.pack(fill='both', expand=True)
         
         # Main upload tab
         self.main_tab = ttk.Frame(self.notebook, padding="20")
-        self.notebook.add(self.main_tab, text="📊 Upload Data")
+        self.notebook.add(self.main_tab, text="Upload Data")
         
         # Settings tab
         self.settings_tab = ttk.Frame(self.notebook, padding="20")
-        self.notebook.add(self.settings_tab, text="⚙️ Settings")
+        self.notebook.add(self.settings_tab, text="Settings")
         
         # Create main tab content
         self.create_main_tab()
@@ -465,7 +458,7 @@ class Cin7SmartsheetUploaderCompleteFinal:
                               font=("Arial", 10))
         desc_label.grid(row=1, column=0, pady=(5, 0))
         
-        self.connection_indicator = ttk.Label(header_frame, text="● Not Connected", 
+        self.connection_indicator = ttk.Label(header_frame, text="Not Connected", 
                                              foreground="red", font=("Arial", 9))
         self.connection_indicator.grid(row=2, column=0, pady=(5, 0))
         
@@ -479,14 +472,14 @@ class Cin7SmartsheetUploaderCompleteFinal:
                                    foreground="gray", wraplength=600)
         file_path_label.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
         
-        self.browse_button = ttk.Button(file_frame, text="📁 Browse Excel File", 
+        self.browse_button = ttk.Button(file_frame, text="Browse Excel File", 
                                        command=self.browse_file_immediate_response)
         self.browse_button.grid(row=1, column=0, sticky="w")
         
         self.file_info_label = ttk.Label(file_frame, text="", foreground="blue")
         self.file_info_label.grid(row=1, column=1, sticky="w", padx=(20, 0))
         
-        self.analyze_button = ttk.Button(file_frame, text="🔍 Analyze Structure", 
+        self.analyze_button = ttk.Button(file_frame, text="Analyze Structure", 
                                         command=self.analyze_file_immediate_response, state="disabled")
         self.analyze_button.grid(row=1, column=2, sticky="e")
         
@@ -507,11 +500,11 @@ class Cin7SmartsheetUploaderCompleteFinal:
         connection_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         connection_frame.grid_columnconfigure(2, weight=1)
         
-        self.connect_button = ttk.Button(connection_frame, text="🔗 Connect", 
+        self.connect_button = ttk.Button(connection_frame, text="Connect", 
                                         command=self.connect_smartsheet_immediate_response)
         self.connect_button.grid(row=0, column=0, sticky="w")
         
-        self.test_connection_button = ttk.Button(connection_frame, text="🧪 Test", 
+        self.test_connection_button = ttk.Button(connection_frame, text="Test", 
                                                 command=self.test_connection_immediate_response, state="disabled")
         self.test_connection_button.grid(row=0, column=1, sticky="w", padx=(10, 0))
         
@@ -530,19 +523,19 @@ class Cin7SmartsheetUploaderCompleteFinal:
         
         self.overwrite_var = tk.BooleanVar(value=True)
         overwrite_cb = ttk.Checkbutton(options_frame, 
-                                      text="🔄 Overwrite existing data (clears sheet first - RECOMMENDED)", 
+                                      text="Overwrite existing data (clears sheet first - RECOMMENDED)", 
                                       variable=self.overwrite_var)
         overwrite_cb.grid(row=0, column=0, sticky="w")
         
         self.verbatim_var = tk.BooleanVar(value=True)
         verbatim_cb = ttk.Checkbutton(options_frame, 
-                                     text="📋 Copy all rows verbatim (captures all 1,112+ rows)", 
+                                     text="Copy all rows verbatim (captures all 1,112+ rows)", 
                                      variable=self.verbatim_var)
         verbatim_cb.grid(row=1, column=0, sticky="w", pady=(5, 0))
         
         self.column_mapping_var = tk.BooleanVar(value=True)
         mapping_cb = ttk.Checkbutton(options_frame, 
-                                    text="🗂️ Apply Cin7 intelligent column mapping", 
+                                    text="Apply Cin7 intelligent column mapping", 
                                     variable=self.column_mapping_var)
         mapping_cb.grid(row=2, column=0, sticky="w", pady=(5, 0))
         
@@ -566,15 +559,15 @@ class Cin7SmartsheetUploaderCompleteFinal:
         process_frame.grid(row=4, column=0, sticky="ew", pady=(0, 15))
         process_frame.grid_columnconfigure(1, weight=1)
         
-        self.upload_button = ttk.Button(process_frame, text="🚀 Start Complete Upload Process", 
+        self.upload_button = ttk.Button(process_frame, text="Start Complete Upload Process", 
                                        command=self.start_upload_immediate_response)
         self.upload_button.grid(row=0, column=0, sticky="w")
         
-        self.cancel_button = ttk.Button(process_frame, text="⏹️ Cancel Upload", 
+        self.cancel_button = ttk.Button(process_frame, text="Cancel Upload", 
                                        command=self.cancel_upload_immediate_response, state="disabled")
         self.cancel_button.grid(row=0, column=1, sticky="w", padx=(20, 0))
         
-        self.preview_button = ttk.Button(process_frame, text="👁️ Preview Data", 
+        self.preview_button = ttk.Button(process_frame, text="Preview Data", 
                                         command=self.preview_data_immediate_response, state="disabled")
         self.preview_button.grid(row=0, column=2, sticky="e")
         
@@ -605,7 +598,7 @@ class Cin7SmartsheetUploaderCompleteFinal:
         log_filter_entry = ttk.Entry(log_controls, textvariable=self.log_filter_var, width=30)
         log_filter_entry.grid(row=0, column=1, sticky="w", padx=(5, 0))
         
-        clear_log_button = ttk.Button(log_controls, text="🗑️ Clear", command=self.clear_log)
+        clear_log_button = ttk.Button(log_controls, text="Clear", command=self.clear_log)
         clear_log_button.grid(row=0, column=2, sticky="e", padx=(10, 0))
         
         self.log_text = scrolledtext.ScrolledText(log_frame, height=15, wrap=tk.WORD, 
@@ -672,45 +665,45 @@ Fixed: Syntax error corrected + comma removal for Smartsheet formula compatibili
     # Enhanced immediate response methods for UI responsiveness
     def browse_file_immediate_response(self):
         """Immediate UI response for file browsing"""
-        self.browse_button.config(text="📁 Browsing...")
+        self.browse_button.config(text="Browsing...")
         self.root.update_idletasks()
         self.root.after(10, self.browse_file_threaded)
     
     def analyze_file_immediate_response(self):
         """Immediate UI response for file analysis"""
-        self.analyze_button.config(text="🔍 Analyzing...")
+        self.analyze_button.config(text="Analyzing...")
         self.root.update_idletasks()
         self.root.after(10, self.analyze_file_threaded)
     
     def connect_smartsheet_immediate_response(self):
         """Immediate UI response for Smartsheet connection"""
-        self.connect_button.config(text="🔗 Connecting...")
+        self.connect_button.config(text="Connecting...")
         self.connection_status_var.set("Connecting...")
         self.root.update_idletasks()
         self.root.after(10, self.connect_smartsheet_threaded)
     
     def test_connection_immediate_response(self):
         """Immediate UI response for connection test"""
-        self.test_connection_button.config(text="🧪 Testing...")
+        self.test_connection_button.config(text="Testing...")
         self.root.update_idletasks()
         self.root.after(10, self.test_connection_threaded)
     
     def start_upload_immediate_response(self):
         """Immediate UI response for upload start"""
-        self.upload_button.config(text="🚀 Starting...")
+        self.upload_button.config(text="Starting...")
         self.upload_button.config(state="disabled")
         self.root.update_idletasks()
         self.root.after(10, self.start_upload_threaded)
     
     def cancel_upload_immediate_response(self):
         """Immediate UI response for upload cancellation"""
-        self.cancel_button.config(text="⏹️ Cancelling...")
+        self.cancel_button.config(text="Cancelling...")
         self.root.update_idletasks()
         self.root.after(10, self.cancel_upload)
     
     def preview_data_immediate_response(self):
         """Immediate UI response for data preview"""
-        self.preview_button.config(text="👁️ Loading...")
+        self.preview_button.config(text="Loading...")
         self.root.update_idletasks()
         self.root.after(10, self.preview_data_threaded)
     
@@ -854,7 +847,15 @@ Fixed: Syntax error corrected + comma removal for Smartsheet formula compatibili
                     pass
                 
                 # Extract sheet ID with enhanced patterns
-                sheet, '').replace(' ', '').strip()
+                sheet_id = self.extract_sheet_id_enhanced(sheet_url)
+                if not sheet_id:
+                    self.message_queue.put(("log", "Error: Could not extract sheet ID from URL", "ERROR"))
+                    self.message_queue.put(("connection_failed", None, None))
+                    return
+                
+                # Test connection and get sheet
+                self.message_queue.put(("log", f"Connecting to sheet ID: {sheet_id}", "INFO"))
+                self.smartsheet_sheet = self.smartsheet_client., '').replace(' ', '').strip()
                             
                             # Try to convert to float first, then format as clean string
                             try:
@@ -1213,207 +1214,7 @@ Do you want to proceed with the upload?
             elif '/b/publish?EQBCT=' in url:
                 return url.split('EQBCT=')[1].split('&')[0]
             else:
-                match = re.search(r'\d{19}', url)
-                if match:
-                    return match.group()
-                match = re.search(r'\d{10,}', url)
-                if match:
-                    return match.group()
-        except Exception as e:
-            self.message_queue.put(("log", f"Error extracting sheet ID: {str(e)}", "ERROR"))
-        return None
-    
-    def cancel_upload(self):
-        """Enhanced upload cancellation"""
-        if self.is_processing:
-            self.upload_cancelled = True
-            self.confirmation_result = False
-            self.message_queue.put(("log", "Cancelling upload...", "WARNING"))
-        else:
-            messagebox.showinfo("No Upload", "No upload is currently in progress")
-    
-    def clear_log(self):
-        """Clear the log display"""
-        self.log_text.delete(1.0, tk.END)
-        self.add_log_message("Log cleared", "INFO")
-    
-    def load_saved_config(self):
-        """Load saved configuration into UI with default token"""
-        try:
-            # Load API token (use saved or default)
-            api_token = self.config.get('api_token', DEFAULT_SMARTSHEET_TOKEN)
-            
-            # Clear and insert API token
-            self.api_token_entry.delete(0, tk.END)
-            if api_token:
-                self.api_token_entry.insert(0, api_token)
-                print(f"Token loaded: {len(api_token)} characters")
-            else:
-                # Fallback - insert default token
-                self.api_token_entry.insert(0, DEFAULT_SMARTSHEET_TOKEN)
-                print(f"Using default token: {len(DEFAULT_SMARTSHEET_TOKEN)} characters")
-            
-            # Load sheet URL
-            if self.config.get('sheet_url'):
-                self.sheet_url_entry.delete(0, tk.END)
-                self.sheet_url_entry.insert(0, self.config['sheet_url'])
-            
-            if self.config.get('window_geometry'):
-                self.root.geometry(self.config['window_geometry'])
-            
-            # Set options
-            self.overwrite_var.set(self.config.get('overwrite_mode', True))
-            self.verbatim_var.set(self.config.get('verbatim_copy', True))
-            self.column_mapping_var.set(self.config.get('column_mapping', True))
-            
-            # Auto-connect if credentials are available
-            if api_token and self.config.get('sheet_url'):
-                self.add_log_message("Auto-connecting with saved credentials...", "INFO")
-                self.root.after(1000, self.connect_smartsheet_immediate_response)
-                
-        except Exception as e:
-            self.add_log_message(f"Error loading saved config: {str(e)}")
-            # Emergency fallback - ensure token is there
-            try:
-                self.api_token_entry.delete(0, tk.END)
-                self.api_token_entry.insert(0, DEFAULT_SMARTSHEET_TOKEN)
-                print("Emergency token fallback applied")
-            except:
-                pass
-    
-    def process_message_queue(self):
-        """Process messages from background threads"""
-        try:
-            while True:
-                message_type, message, tag = self.message_queue.get_nowait()
-                
-                if message_type == "log":
-                    self.add_log_message(message, tag)
-                
-                elif message_type == "progress_update":
-                    self.progress_var.set(message)
-                    if tag is not None:
-                        self.progress_bar['value'] = tag
-                
-                elif message_type == "file_selected":
-                    self.analyze_button.config(state="normal")
-                    self.file_info_label.config(text=f"File: {message}")
-                
-                elif message_type == "file_analyzed":
-                    self.preview_button.config(state="normal")
-                    self.file_info_label.config(text=f"Analyzed: {message}")
-                
-                elif message_type == "connection_success":
-                    self.connection_status_var.set(f"Connected: {message}")
-                    self.connection_status_label.config(foreground="green")
-                    self.connection_indicator.config(text="● Connected", foreground="green")
-                    self.test_connection_button.config(state="normal")
-                    if self.excel_file_path:
-                        self.upload_button.config(state="normal")
-                
-                elif message_type == "connection_failed":
-                    self.connection_status_var.set("Connection failed")
-                    self.connection_status_label.config(foreground="red")
-                    self.connection_indicator.config(text="● Not Connected", foreground="red")
-                    self.test_connection_button.config(state="disabled")
-                    self.upload_button.config(state="disabled")
-                
-                elif message_type == "upload_started":
-                    self.cancel_button.config(state="normal")
-                    self.upload_button.config(state="disabled")
-                    self.progress_bar['value'] = 0
-                
-                elif message_type == "upload_finished":
-                    self.cancel_button.config(state="disabled")
-                    if self.excel_file_path and self.smartsheet_client:
-                        self.upload_button.config(state="normal")
-                    self.upload_button.config(text="🚀 Start Complete Upload Process")
-                
-                # Reset button states
-                elif message_type == "reset_browse_button":
-                    self.browse_button.config(text="📁 Browse Excel File")
-                elif message_type == "reset_analyze_button":
-                    self.analyze_button.config(text="🔍 Analyze Structure")
-                elif message_type == "reset_connect_button":
-                    self.connect_button.config(text="🔗 Connect")
-                elif message_type == "reset_test_button":
-                    self.test_connection_button.config(text="🧪 Test")
-                elif message_type == "reset_upload_button":
-                    self.upload_button.config(text="🚀 Start Complete Upload Process")
-                    self.upload_button.config(state="normal" if self.excel_file_path and self.smartsheet_client else "disabled")
-                elif message_type == "reset_preview_button":
-                    self.preview_button.config(text="👁️ Preview Data")
-                    
-        except queue.Empty:
-            pass
-        finally:
-            self.root.after(100, self.process_message_queue)
-    
-    def add_log_message(self, message: str, tag: str = "INFO"):
-        """Add message to log with enhanced formatting"""
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        formatted_message = f"[{timestamp}] {message}\n"
-        
-        self.log_text.insert(tk.END, formatted_message, tag)
-        self.log_text.see(tk.END)
-        
-        # Also log to file
-        if tag == "ERROR":
-            self.logger.error(message)
-        elif tag == "WARNING":
-            self.logger.warning(message)
-        elif tag == "SUCCESS":
-            self.logger.info(f"SUCCESS: {message}")
-        else:
-            self.logger.info(message)
-    
-    def on_closing(self):
-        """Handle application closing with proper cleanup"""
-        if self.is_processing:
-            if messagebox.askokcancel("Quit", "Upload is in progress. Cancel and quit?"):
-                self.upload_cancelled = True
-                self.save_config()
-                self.root.destroy()
-        else:
-            self.save_config()
-            self.root.destroy()
-    
-    def run(self):
-        """Start the application"""
-        self.add_log_message("Cin7 to Smartsheet Uploader v3.0 - Complete Final Fixed Edition", "SUCCESS")
-        self.add_log_message("COMPLETE FIX: Syntax error corrected + comma removal for Smartsheet formula compatibility", "SUCCESS")
-        self.add_log_message("Features: Overwrite Mode | Cin7 Column Mapping | Multi-Header Support | Enhanced Threading | Clean Numbers", "INFO")
-        self.add_log_message("Ready to process Cin7 files with full 1,112+ row support and proper numeric formatting", "INFO")
-        
-        try:
-            self.root.mainloop()
-        except KeyboardInterrupt:
-            self.logger.info("Application interrupted by user")
-        except Exception as e:
-            self.logger.error(f"Application error: {str(e)}")
-            messagebox.showerror("Application Error", f"An unexpected error occurred:\n\n{str(e)}")
-
-if __name__ == "__main__":
-    try:
-        print("Starting Cin7 to Smartsheet Uploader Complete Final Fixed Edition...")
-        print("COMPLETE FIXES APPLIED:")
-        print("  ✓ Syntax error in line 854 corrected")
-        print("  ✓ Comma removal from numeric values for Smartsheet formula compatibility")
-        print("  ✓ All original features preserved (1,900+ lines)")
-        print("  ✓ Enhanced threading and error handling")
-        print("  ✓ Multi-header support for Cin7 exports")
-        print("  ✓ Intelligent column mapping")
-        print("  ✓ Complete overwrite mode")
-        print("  ✓ Progress tracking and logging")
-        print()
-        
-        app = Cin7SmartsheetUploaderCompleteFinal()
-        app.run()
-        
-    except Exception as e:
-        print(f"Failed to start application: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
-        input("Press Enter to exit...")#!/usr/bin/env python3
+                match = re.search(r'\d{19}', url)#!/usr/bin/env python3
 """
 Cin7 to Smartsheet Uploader v3.0 - COMPLETE FINAL FIXED VERSION
 Mantiene TODAS las funcionalidades + corrección de sintaxis + eliminación de comas
@@ -1571,17 +1372,17 @@ class Cin7SmartsheetUploaderCompleteFinal:
         """Create complete user interface without TTK style issues"""
         print("Creating complete user interface...")
         
-        # Create notebook for tabbed interface (using ttk.Notebook is safe, it's the Style() that causes issues)
+        # Create notebook for tabbed interface
         self.notebook = ttk.Notebook(self.root, padding="10")
         self.notebook.pack(fill='both', expand=True)
         
         # Main upload tab
         self.main_tab = ttk.Frame(self.notebook, padding="20")
-        self.notebook.add(self.main_tab, text="📊 Upload Data")
+        self.notebook.add(self.main_tab, text="Upload Data")
         
         # Settings tab
         self.settings_tab = ttk.Frame(self.notebook, padding="20")
-        self.notebook.add(self.settings_tab, text="⚙️ Settings")
+        self.notebook.add(self.settings_tab, text="Settings")
         
         # Create main tab content
         self.create_main_tab()
@@ -1611,7 +1412,7 @@ class Cin7SmartsheetUploaderCompleteFinal:
                               font=("Arial", 10))
         desc_label.grid(row=1, column=0, pady=(5, 0))
         
-        self.connection_indicator = ttk.Label(header_frame, text="● Not Connected", 
+        self.connection_indicator = ttk.Label(header_frame, text="Not Connected", 
                                              foreground="red", font=("Arial", 9))
         self.connection_indicator.grid(row=2, column=0, pady=(5, 0))
         
@@ -1625,14 +1426,14 @@ class Cin7SmartsheetUploaderCompleteFinal:
                                    foreground="gray", wraplength=600)
         file_path_label.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
         
-        self.browse_button = ttk.Button(file_frame, text="📁 Browse Excel File", 
+        self.browse_button = ttk.Button(file_frame, text="Browse Excel File", 
                                        command=self.browse_file_immediate_response)
         self.browse_button.grid(row=1, column=0, sticky="w")
         
         self.file_info_label = ttk.Label(file_frame, text="", foreground="blue")
         self.file_info_label.grid(row=1, column=1, sticky="w", padx=(20, 0))
         
-        self.analyze_button = ttk.Button(file_frame, text="🔍 Analyze Structure", 
+        self.analyze_button = ttk.Button(file_frame, text="Analyze Structure", 
                                         command=self.analyze_file_immediate_response, state="disabled")
         self.analyze_button.grid(row=1, column=2, sticky="e")
         
@@ -1653,11 +1454,11 @@ class Cin7SmartsheetUploaderCompleteFinal:
         connection_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         connection_frame.grid_columnconfigure(2, weight=1)
         
-        self.connect_button = ttk.Button(connection_frame, text="🔗 Connect", 
+        self.connect_button = ttk.Button(connection_frame, text="Connect", 
                                         command=self.connect_smartsheet_immediate_response)
         self.connect_button.grid(row=0, column=0, sticky="w")
         
-        self.test_connection_button = ttk.Button(connection_frame, text="🧪 Test", 
+        self.test_connection_button = ttk.Button(connection_frame, text="Test", 
                                                 command=self.test_connection_immediate_response, state="disabled")
         self.test_connection_button.grid(row=0, column=1, sticky="w", padx=(10, 0))
         
@@ -1676,19 +1477,19 @@ class Cin7SmartsheetUploaderCompleteFinal:
         
         self.overwrite_var = tk.BooleanVar(value=True)
         overwrite_cb = ttk.Checkbutton(options_frame, 
-                                      text="🔄 Overwrite existing data (clears sheet first - RECOMMENDED)", 
+                                      text="Overwrite existing data (clears sheet first - RECOMMENDED)", 
                                       variable=self.overwrite_var)
         overwrite_cb.grid(row=0, column=0, sticky="w")
         
         self.verbatim_var = tk.BooleanVar(value=True)
         verbatim_cb = ttk.Checkbutton(options_frame, 
-                                     text="📋 Copy all rows verbatim (captures all 1,112+ rows)", 
+                                     text="Copy all rows verbatim (captures all 1,112+ rows)", 
                                      variable=self.verbatim_var)
         verbatim_cb.grid(row=1, column=0, sticky="w", pady=(5, 0))
         
         self.column_mapping_var = tk.BooleanVar(value=True)
         mapping_cb = ttk.Checkbutton(options_frame, 
-                                    text="🗂️ Apply Cin7 intelligent column mapping", 
+                                    text="Apply Cin7 intelligent column mapping", 
                                     variable=self.column_mapping_var)
         mapping_cb.grid(row=2, column=0, sticky="w", pady=(5, 0))
         
@@ -1712,15 +1513,15 @@ class Cin7SmartsheetUploaderCompleteFinal:
         process_frame.grid(row=4, column=0, sticky="ew", pady=(0, 15))
         process_frame.grid_columnconfigure(1, weight=1)
         
-        self.upload_button = ttk.Button(process_frame, text="🚀 Start Complete Upload Process", 
+        self.upload_button = ttk.Button(process_frame, text="Start Complete Upload Process", 
                                        command=self.start_upload_immediate_response)
         self.upload_button.grid(row=0, column=0, sticky="w")
         
-        self.cancel_button = ttk.Button(process_frame, text="⏹️ Cancel Upload", 
+        self.cancel_button = ttk.Button(process_frame, text="Cancel Upload", 
                                        command=self.cancel_upload_immediate_response, state="disabled")
         self.cancel_button.grid(row=0, column=1, sticky="w", padx=(20, 0))
         
-        self.preview_button = ttk.Button(process_frame, text="👁️ Preview Data", 
+        self.preview_button = ttk.Button(process_frame, text="Preview Data", 
                                         command=self.preview_data_immediate_response, state="disabled")
         self.preview_button.grid(row=0, column=2, sticky="e")
         
@@ -1751,7 +1552,7 @@ class Cin7SmartsheetUploaderCompleteFinal:
         log_filter_entry = ttk.Entry(log_controls, textvariable=self.log_filter_var, width=30)
         log_filter_entry.grid(row=0, column=1, sticky="w", padx=(5, 0))
         
-        clear_log_button = ttk.Button(log_controls, text="🗑️ Clear", command=self.clear_log)
+        clear_log_button = ttk.Button(log_controls, text="Clear", command=self.clear_log)
         clear_log_button.grid(row=0, column=2, sticky="e", padx=(10, 0))
         
         self.log_text = scrolledtext.ScrolledText(log_frame, height=15, wrap=tk.WORD, 
@@ -1818,45 +1619,45 @@ Fixed: Syntax error corrected + comma removal for Smartsheet formula compatibili
     # Enhanced immediate response methods for UI responsiveness
     def browse_file_immediate_response(self):
         """Immediate UI response for file browsing"""
-        self.browse_button.config(text="📁 Browsing...")
+        self.browse_button.config(text="Browsing...")
         self.root.update_idletasks()
         self.root.after(10, self.browse_file_threaded)
     
     def analyze_file_immediate_response(self):
         """Immediate UI response for file analysis"""
-        self.analyze_button.config(text="🔍 Analyzing...")
+        self.analyze_button.config(text="Analyzing...")
         self.root.update_idletasks()
         self.root.after(10, self.analyze_file_threaded)
     
     def connect_smartsheet_immediate_response(self):
         """Immediate UI response for Smartsheet connection"""
-        self.connect_button.config(text="🔗 Connecting...")
+        self.connect_button.config(text="Connecting...")
         self.connection_status_var.set("Connecting...")
         self.root.update_idletasks()
         self.root.after(10, self.connect_smartsheet_threaded)
     
     def test_connection_immediate_response(self):
         """Immediate UI response for connection test"""
-        self.test_connection_button.config(text="🧪 Testing...")
+        self.test_connection_button.config(text="Testing...")
         self.root.update_idletasks()
         self.root.after(10, self.test_connection_threaded)
     
     def start_upload_immediate_response(self):
         """Immediate UI response for upload start"""
-        self.upload_button.config(text="🚀 Starting...")
+        self.upload_button.config(text="Starting...")
         self.upload_button.config(state="disabled")
         self.root.update_idletasks()
         self.root.after(10, self.start_upload_threaded)
     
     def cancel_upload_immediate_response(self):
         """Immediate UI response for upload cancellation"""
-        self.cancel_button.config(text="⏹️ Cancelling...")
+        self.cancel_button.config(text="Cancelling...")
         self.root.update_idletasks()
         self.root.after(10, self.cancel_upload)
     
     def preview_data_immediate_response(self):
         """Immediate UI response for data preview"""
-        self.preview_button.config(text="👁️ Loading...")
+        self.preview_button.config(text="Loading...")
         self.root.update_idletasks()
         self.root.after(10, self.preview_data_threaded)
     
@@ -2000,4 +1801,12 @@ Fixed: Syntax error corrected + comma removal for Smartsheet formula compatibili
                     pass
                 
                 # Extract sheet ID with enhanced patterns
-                sheet
+                sheet_id = self.extract_sheet_id_enhanced(sheet_url)
+                if not sheet_id:
+                    self.message_queue.put(("log", "Error: Could not extract sheet ID from URL", "ERROR"))
+                    self.message_queue.put(("connection_failed", None, None))
+                    return
+                
+                # Test connection and get sheet
+                self.message_queue.put(("log", f"Connecting to sheet ID: {sheet_id}", "INFO"))
+                self.smartsheet_sheet = self.smartsheet_client.
