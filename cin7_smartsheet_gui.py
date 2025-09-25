@@ -1005,7 +1005,27 @@ Do you want to proceed with the upload?
                         if col_name in column_map and str(value).strip() and str(value) != 'nan':
                             cell = smartsheet.models.Cell()
                             cell.column_id = column_map[col_name]
-                            cell.value = str(value).strip()
+                            
+                            # Check if this is a numeric column and send as number
+                            numeric_columns = ['SOH', 'Incoming NOT paid', 'Open Sales', 'Grand Total', 'Available']
+                            potential_numeric_cols = [c for c in df.columns 
+                                                    if any(keyword in str(c).lower() 
+                                                          for keyword in ['stock qty', 'stock value', 'qty', 'total', 'incoming', 'sales'])]
+                            all_numeric_columns = list(set(numeric_columns + potential_numeric_cols))
+                            
+                            if col_name in all_numeric_columns:
+                                try:
+                                    # Send as numeric value, not string
+                                    numeric_value = float(str(value).strip())
+                                    if numeric_value == int(numeric_value):
+                                        cell.value = int(numeric_value)  # Send as integer
+                                    else:
+                                        cell.value = numeric_value  # Send as float
+                                except (ValueError, TypeError):
+                                    cell.value = str(value).strip()  # Fallback to string
+                            else:
+                                cell.value = str(value).strip()  # Send as string for non-numeric
+                            
                             new_row.cells.append(cell)
                     
                     if new_row.cells:
