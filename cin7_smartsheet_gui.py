@@ -1391,9 +1391,46 @@ Do you want to proceed with the upload?
 if __name__ == "__main__":
     try:
         print("Starting Cin7 to Smartsheet Uploader Complete Edition...")
+        
+        # Add detailed error logging
+        import sys
+        import traceback
+        import tempfile
+        import os
+        from datetime import datetime
+        
+        # Create error log in temp directory
+        error_log = os.path.join(tempfile.gettempdir(), "cin7_uploader_error.log")
+        
+        with open(error_log, 'w') as f:
+            f.write(f"Starting application at {datetime.now()}\n")
+            f.write(f"Python version: {sys.version}\n")
+            f.write(f"Working directory: {os.getcwd()}\n")
+            f.flush()
+        
         app = Cin7SmartsheetUploaderComplete()
         app.run()
+        
     except Exception as e:
-        print(f"Failed to start application: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
+        error_msg = f"Failed to start application: {str(e)}\nTraceback: {traceback.format_exc()}"
+        print(error_msg)
+        
+        # Write to error log
+        try:
+            with open(error_log, 'a') as f:
+                f.write(f"ERROR: {error_msg}\n")
+        except:
+            pass
+            
+        # Show error dialog
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("Startup Error", 
+                f"Application failed to start:\n\n{str(e)}\n\nError log: {error_log}")
+        except:
+            pass
+            
         input("Press Enter to exit...")
