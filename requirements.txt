@@ -1,4 +1,11 @@
 pandas
 smartsheet-python-sdk
 openpyxl
+requests
+tkinter
+pathlib
+typing
 py2app
+packaging
+urllib3
+certifi
