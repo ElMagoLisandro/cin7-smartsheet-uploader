@@ -38,7 +38,8 @@ class Cin7SmartsheetUploaderComplete:
         self.root.minsize(900, 700)
         
         # Configuration file for persistence
-        self.config_file = "cin7_uploader_config.json"
+        # Store config in user's home directory, not app directory (macOS security)
+        self.config_file = str(Path.home() / "cin7_uploader_config.json")
         self.config = self.load_config()
         
         # Processing variables
@@ -128,10 +129,20 @@ class Cin7SmartsheetUploaderComplete:
         except Exception as e:
             print(f"Warning: Could not save config - {str(e)}")
     
-    def setup_logging(self):
-        """Setup comprehensive logging system"""
-        # Create logs directory
-        log_dir = Path("logs")
+def setup_logging(self):
+    """Setup comprehensive logging system"""
+    # Create logs directory in user's temp/home directory instead of app directory
+    import tempfile
+    from pathlib import Path
+    
+    # Use system temp directory or user's home directory for logs
+    try:
+        # Try user's home directory first
+        log_dir = Path.home() / "Cin7UploaderLogs"
+        log_dir.mkdir(exist_ok=True)
+    except:
+        # Fallback to system temp directory
+        log_dir = Path(tempfile.gettempdir()) / "Cin7UploaderLogs"
         log_dir.mkdir(exist_ok=True)
         
         # Configure logging with rotation
