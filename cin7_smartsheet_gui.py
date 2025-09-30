@@ -130,22 +130,22 @@ class Cin7SmartsheetUploaderComplete:
             print(f"Warning: Could not save config - {str(e)}")
     
     def setup_logging(self):
-    """Setup comprehensive logging system"""
-    # Create logs directory in user's temp/home directory instead of app directory
-    import tempfile
-    from pathlib import Path
-    
-    # Use system temp directory or user's home directory for logs
-    try:
-        # Try user's home directory first
-        log_dir = Path.home() / "Cin7UploaderLogs"
-        log_dir.mkdir(exist_ok=True)
-    except:
-        # Fallback to system temp directory
-        log_dir = Path(tempfile.gettempdir()) / "Cin7UploaderLogs"
-        log_dir.mkdir(exist_ok=True)
+        """Setup comprehensive logging system"""
+        # Create logs directory in user's temp/home directory instead of app directory
+        import tempfile
+        from pathlib import Path
         
-        # Configure logging with rotation
+        # Use system temp directory or user's home directory for logs
+        try:
+            # Try user's home directory first
+            log_dir = Path.home() / "Cin7UploaderLogs"
+            log_dir.mkdir(exist_ok=True)
+        except:
+            # Fallback to system temp directory
+            log_dir = Path(tempfile.gettempdir()) / "Cin7UploaderLogs"
+            log_dir.mkdir(exist_ok=True)
+        
+        # Configure logging with rotation (OUTSIDE the try-except)
         log_filename = log_dir / f"cin7_uploader_{datetime.now().strftime('%Y%m%d')}.log"
         
         logging.basicConfig(
@@ -1349,8 +1349,9 @@ Do you want to proceed with the upload?
             self.save_config()
             self.root.destroy()
     
+    # 
     def clean_numeric_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Clean numeric columns to remove commas and formatting for Smartsheet formulas"""
+        """Clean numeric columns to prepare for Smartsheet upload"""
         numeric_columns = ['SOH', 'Incoming NOT paid', 'Open Sales', 'Grand Total', 'Available']
         potential_numeric_cols = []
         
@@ -1366,22 +1367,19 @@ Do you want to proceed with the upload?
         
         for col in columns_to_clean:
             try:
+                # Limpiar y convertir a numérico
                 df[col] = df[col].astype(str)
                 df[col] = df[col].str.replace(r'[,$\s]', '', regex=True)
                 df[col] = df[col].str.replace(r'[^\d.-]', '', regex=True)
                 df[col] = df[col].replace(['', 'nan', 'None', 'null'], '0')
                 
-                numeric_values = pd.to_numeric(df[col], errors='coerce').fillna(0)
-                df[col] = numeric_values.apply(lambda x: str(int(x)) if x == int(x) else str(x))
+                # MANTENER COMO NUMÉRICO, no convertir a string
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
                 
-                self.message_queue.put(("log", f"  - Cleaned column '{col}': removed formatting", "INFO"))
+                self.message_queue.put(("log", f"  - Cleaned column '{col}': numeric values ready", "INFO"))
                 
             except Exception as e:
                 self.message_queue.put(("log", f"  - Warning: Could not clean column '{col}': {str(e)}", "WARNING"))
-                try:
-                    df[col] = df[col].astype(str).str.replace(',', '')
-                except:
-                    pass
         
         return df
     
