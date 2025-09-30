@@ -129,7 +129,7 @@ class Cin7SmartsheetUploaderComplete:
         except Exception as e:
             print(f"Warning: Could not save config - {str(e)}")
     
-def setup_logging(self):
+    def setup_logging(self):
     """Setup comprehensive logging system"""
     # Create logs directory in user's temp/home directory instead of app directory
     import tempfile
