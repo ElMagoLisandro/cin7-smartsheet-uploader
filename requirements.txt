@@ -1,11 +1,25 @@
-pandas
-smartsheet-python-sdk
-openpyxl
-requests
-pathlib
-typing
-py2app
-packaging
-urllib3
-certifi
+# Cin7 to Smartsheet Uploader v4.0 - Requirements
+# Python 3.8+ required
 
+# Core dependencies
+pandas==2.0.3
+openpyxl==3.1.2
+smartsheet-python-sdk==2.105.5
+
+# HTTP and networking
+requests==2.31.0
+urllib3==2.0.7
+
+# Additional dependencies (usually installed with above, but explicit for clarity)
+certifi==2023.7.22
+charset-normalizer==3.3.2
+idna==3.4
+python-dateutil==2.8.2
+pytz==2023.3
+six==1.16.0
+et-xmlfile==1.1.0
+numpy==1.24.3
+
+# For better compatibility
+setuptools>=65.5.0
+wheel>=0.38.0
